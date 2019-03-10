@@ -1,0 +1,5 @@
+syntax: regexp
+\.pyc$
+^build$
+^dist$
+^towebm.egg-info$
