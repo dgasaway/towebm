@@ -43,6 +43,9 @@ def main():
     parser.add_argument('-y', '--crop-height',
         help='top and bottom crop values',
         nargs=2, type=int, metavar=('TOP', 'BOTTOM'))
+    parser.add_argument('-g', '--gamma',
+        help='gramma correction (default 1.0; no correction)',
+        action='store', type=float, default=1.0)
     parser.add_argument('-f', '--filter',
         help='custom video filter, passed as -vf argument',
         action='append')
@@ -114,14 +117,17 @@ def append(s1, s2, delimit):
 def build_video_filter(args):
     vf = ''
 
-    # Want to standard filters is a certain order, so do not loop.
+    # Want to apply standard filters is a certain order, so do not loop.
     if args.standard_filter is not None:
         if 'deint' in args.standard_filter:
             vf = append(vf, 'yadif=parity=tff', ',')
         if 'gray' in args.standard_filter:
             vf = append(vf, 'format=gray', ',')
+        # TODO: Try something like 'crop=w=(in_h*4/3)'
         if '43' in args.standard_filter:
             vf = append(vf, 'crop=w=1440', ',')
+    if args.gamma != 1.0:
+        vf = append(vf, 'eq=gamma={g}'.format(g=args.gamma), ',')
 
     if args.crop_width is not None or args.crop_height is not None:
         if args.crop_width is not None and args.crop_height is not None:
@@ -133,9 +139,10 @@ def build_video_filter(args):
         vf = append(vf, crop.format(x=args.crop_width, y=args.crop_height), ',')
     
     if args.standard_filter is not None:
+        # TODO: Try something like 'scale=h=in_h*2/3:w=-1'
         if '720' in args.standard_filter:
             vf = append(vf, 'scale=h=720:w=-1', ',')
-        
+    
     if args.filter is not None:
         for filter in args.filter:
             vf = append(vf, filter, ',')
@@ -210,7 +217,7 @@ def build_pass2_command(args, file):
         ' -threads 8'
         ' -pass 2'
         ' -passlogfile "{title}"'
-        ' -cpu-used 1'
+        ' -cpu-used 2'
         ' -metadata title="{title}"'
         ' "{out_file}"')
     title = os.path.splitext(os.path.basename(file))[0]
