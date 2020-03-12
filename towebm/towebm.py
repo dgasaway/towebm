@@ -26,6 +26,10 @@ from towebm._version import __version__
 def main():
     parser = ArgumentParser(
         description='Converts videos to webm format (vp9+opus) using ffmpeg.',
+        epilog='Notes on filter order: Standard crop filters (e.g., "-s crop43") are applied '
+               'before custom crop values (e.g., "-x 10 10"); crop filters are applied before '
+               'scale filters (e.g., "-s scale23"); and all standard filters are applied before '
+               'custom (i.e., "-f" and "-a") filters.',
         fromfile_prefix_chars="@")
     parser.add_argument('--version', action='version', version='%(prog)s ' + __version__)
     parser.add_argument('-q', '--quality',
@@ -35,8 +39,13 @@ def main():
         help='audio bitrate in kbps (default 128)',
         action='store', type=int, default=128)
     parser.add_argument('-s', '--standard-filter',
-        help='standard video/audio filter',
-        action='append', choices=['43', '720', 'gray', 'deint', 'anorm'])
+        help='standard video/audio filter; '
+             '[crop43] crops horizontally to 4:3 aspect ratio; '
+             '[scale23] scales down by 2/3 (e.g., 1080p to 720p); '
+             '[gray] converts to grayscale; '
+             '[deint] deinterlaces; '
+             '[anorm] applies audio normalization',
+        action='append', choices=['crop43', 'scale23', 'gray', 'deint', 'anorm'])
     parser.add_argument('-x', '--crop-width',
         help='left and right crop values',
         nargs=2, type=int, metavar=('LEFT', 'RIGHT'))
@@ -123,9 +132,8 @@ def build_video_filter(args):
             vf = append(vf, 'yadif=parity=tff', ',')
         if 'gray' in args.standard_filter:
             vf = append(vf, 'format=gray', ',')
-        # TODO: Try something like 'crop=w=(in_h*4/3)'
-        if '43' in args.standard_filter:
-            vf = append(vf, 'crop=w=1440', ',')
+        if 'crop43' in args.standard_filter:
+            vf = append(vf, 'crop=w=(in_h*4/3)', ',')
     if args.gamma != 1.0:
         vf = append(vf, 'eq=gamma={g}'.format(g=args.gamma), ',')
 
@@ -139,9 +147,8 @@ def build_video_filter(args):
         vf = append(vf, crop.format(x=args.crop_width, y=args.crop_height), ',')
     
     if args.standard_filter is not None:
-        # TODO: Try something like 'scale=h=in_h*2/3:w=-1'
-        if '720' in args.standard_filter:
-            vf = append(vf, 'scale=h=720:w=-1', ',')
+        if 'scale23' in args.standard_filter:
+            vf = append(vf, 'scale=h=in_h*2/3:w=-1', ',')
     
     if args.filter is not None:
         for filter in args.filter:
