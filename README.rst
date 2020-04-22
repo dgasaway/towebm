@@ -19,7 +19,7 @@ Transcode a source 1920x1080 MP4 video, which is cropped to 4:3 ratio
 (1440x1080), then scaled to 720 vertical resolution (960x720), and converted
 to grayscale.  Video quality is set to 25::
 
-    towebm -q 25 -s 43 -s 720 -s gray Three*.mp4
+    towebm -q 25 -s crop43 -s scale23 -s gray Three*.mp4
 
 Transcode a source MP4 video with a 140 and 144 crop from the top and bottom,
 respectively::
