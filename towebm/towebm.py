@@ -61,6 +61,9 @@ def main():
     parser.add_argument('-a', '--audio-filter',
         help='custom audio filter, passed as -af argument',
         action='append')
+    parser.add_argument('--volume', 
+        help='amplitude (volume) multiplier, < 1.0 to reduce volume, or > 1.0 to increase volume ',
+        action='store', type=float, default=1.0)
     # Note: 'pass' is a keyword, so used name 'only_pass' internally.
     parser.add_argument('--pass',
         help='run only a given pass',
@@ -137,6 +140,7 @@ def build_video_filter(args):
             vf = append(vf, 'format=gray', ',')
         if 'crop43' in args.standard_filter:
             vf = append(vf, 'crop=w=(in_h*4/3)', ',')
+
     if args.gamma != 1.0:
         vf = append(vf, 'eq=gamma={g}'.format(g=args.gamma), ',')
 
@@ -167,6 +171,9 @@ def build_audio_filter(args):
     if args.standard_filter is not None:
         if 'anorm' in args.standard_filter:
             af = append(af, 'dynaudnorm=g=301:r=0.9', ',')
+
+    if args.volume != 1.0:
+        af = append(af, 'volume={v}'.format(v=args.volume), ',')
 
     if args.audio_filter is not None:
         for filter in args.audio_filter:
@@ -236,7 +243,7 @@ def build_pass2_command(args, file):
     vf = build_video_filter(args)
     af = build_audio_filter(args)
     seek = ' -accurate_seek' if args.start is not None or args.end is not None else ''
-    start = ' -accurate_seek -ss {0}'.format(args.start) if args.start is not None else ''
+    start = ' -ss {0}'.format(args.start) if args.start is not None else ''
     duration = ' -t {0}'.format(args.duration) if args.duration is not None else ''
     end = ' -to {0}'.format(args.end) if args.end is not None else ''
     out_file = get_safe_filename(title + '.webm')
