@@ -71,6 +71,9 @@ def main():
     parser.add_argument('--duration',
         help='duration to encode (ffmpeg duration format)',
         action='store')
+    parser.add_argument('--end',
+        help='ending input position (ffmpeg duration format)',
+        action='store')
     parser.add_argument('--pretend',
         help='display command lines but do not execute',
         action='store_true')
@@ -175,7 +178,7 @@ def build_audio_filter(args):
 def build_pass1_command(args, file):
     fmt = (
         'ffmpeg -nostdin'
-        '{start}{duration}'
+        '{seek}{start}{duration}{end}'
         ' -i "{file}"'
         ' -c:v libvpx-vp9'
         ' -crf {args.quality}'
@@ -196,15 +199,19 @@ def build_pass1_command(args, file):
         ' /dev/null')
     title = os.path.splitext(os.path.basename(file))[0]
     vf = build_video_filter(args)
-    start = ' -accurate_seek -ss {0}'.format(args.start) if args.start is not None else ''
+    seek = ' -accurate_seek' if args.start is not None or args.end is not None else ''
+    start = ' -ss {0}'.format(args.start) if args.start is not None else ''
     duration = ' -t {0}'.format(args.duration) if args.duration is not None else ''
-    return fmt.format(file=file, args=args, vf=vf, start=start, duration=duration, title=title)
+    end = ' -to {0}'.format(args.end) if args.end is not None else ''
+    return fmt.format(
+        file=file, args=args, vf=vf, seek=seek, start=start, duration=duration, end=end,
+        title=title)
 
 # --------------------------------------------------------------------------------------------------
 def build_pass2_command(args, file):
     fmt = (
         'ffmpeg -nostdin'
-        '{start}{duration}'
+        '{seek}{start}{duration}{end}'
         ' -i "{file}"'
         ' -c:v libvpx-vp9'
         ' -crf {args.quality}'
@@ -228,12 +235,14 @@ def build_pass2_command(args, file):
     title = os.path.splitext(os.path.basename(file))[0]
     vf = build_video_filter(args)
     af = build_audio_filter(args)
+    seek = ' -accurate_seek' if args.start is not None or args.end is not None else ''
     start = ' -accurate_seek -ss {0}'.format(args.start) if args.start is not None else ''
     duration = ' -t {0}'.format(args.duration) if args.duration is not None else ''
+    end = ' -to {0}'.format(args.end) if args.end is not None else ''
     out_file = get_safe_filename(title + '.webm')
     return fmt.format(
-        file=file, out_file=out_file, args=args, vf=vf, af=af, start=start, duration=duration,
-        title=title)
+        file=file, out_file=out_file, args=args, vf=vf, af=af, seek=seek, start=start,
+        duration=duration, end=end, title=title)
 
 # --------------------------------------------------------------------------------------------------
 def build_log_cmd(args, file):
