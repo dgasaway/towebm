@@ -36,8 +36,8 @@ def main():
         help='video quality (lower is better, default 30)',
         action='store', type=int, default=30)
     parser.add_argument('-b', '--audio-bitrate',
-        help='audio bitrate in kbps (default 128)',
-        action='store', type=int, default=128)
+        help='audio bitrate in kbps (default 160)',
+        action='store', type=int, default=160)
     parser.add_argument('-s', '--standard-filter',
         help='standard video/audio filter; '
              '[crop43] crops horizontally to 4:3 aspect ratio; '
