@@ -77,6 +77,9 @@ def main():
     parser.add_argument('--end',
         help='ending input position (ffmpeg duration format)',
         action='store')
+    parser.add_argument('-#', '--always-number',
+        help='always add a number to the output file name',
+        action='store_true', default=False)
     parser.add_argument('--pretend',
         help='display command lines but do not execute',
         action='store_true')
@@ -110,8 +113,8 @@ def main():
     exit(ret)
 
 # --------------------------------------------------------------------------------------------------
-def get_safe_filename(filename):
-    if not os.path.exists(filename):
+def get_safe_filename(filename, always_number):
+    if not always_number and not os.path.exists(filename):
         return filename
     else:
         (base, ext) = os.path.splitext(filename)
@@ -246,7 +249,7 @@ def build_pass2_command(args, file):
     start = ' -ss {0}'.format(args.start) if args.start is not None else ''
     duration = ' -t {0}'.format(args.duration) if args.duration is not None else ''
     end = ' -to {0}'.format(args.end) if args.end is not None else ''
-    out_file = get_safe_filename(title + '.webm')
+    out_file = get_safe_filename(title + '.webm', args.always_number)
     return fmt.format(
         file=file, out_file=out_file, args=args, vf=vf, af=af, seek=seek, start=start,
         duration=duration, end=end, title=title)
