@@ -115,8 +115,8 @@ def get_safe_filename(filename):
         return filename
     else:
         (base, ext) = os.path.splitext(filename)
-        for i in range(10):
-            s = '{0}_{1}{2}'.format(base, i, ext)
+        for i in range(100):
+            s = '{0}_{1:02}{2}'.format(base, i, ext)
             if not os.path.exists(s):
                 return s
         return filename
