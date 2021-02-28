@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 # towebm - Converts videos to webm format (vp9+opus) using ffmpeg.
-# Copyright (C) 2019 David Gasaway
+# Copyright (C) 2021 David Gasaway
 # https://bitbucket.org/dgasaway/towebm
 
 # This program is free software; you can redistribute it and/or modify it under the terms of the GNU
@@ -25,11 +25,7 @@ from towebm._version import __version__
 # --------------------------------------------------------------------------------------------------
 def main():
     parser = ArgumentParser(
-        description='Converts videos to webm format (vp9+opus) using ffmpeg.',
-        epilog='Notes on filter order: Standard crop filters (e.g., "-s crop43") are applied '
-               'before custom crop values (e.g., "-x 10 10"); crop filters are applied before '
-               'scale filters (e.g., "-s scale23"); and all standard filters are applied before '
-               'custom (i.e., "-f" and "-a") filters.',
+        description='Converts videos to webm format (vp9+opus) using a two-pass ffmpeg encode.',
         fromfile_prefix_chars="@")
     parser.add_argument('--version', action='version', version='%(prog)s ' + __version__)
     parser.add_argument('-q', '--quality',
@@ -38,45 +34,11 @@ def main():
     parser.add_argument('-b', '--audio-bitrate',
         help='audio bitrate in kbps (default 160)',
         action='store', type=int, default=160)
-    parser.add_argument('-s', '--standard-filter',
-        help='standard video/audio filter; '
-             '[crop43] crops horizontally to 4:3 aspect ratio; '
-             '[scale23] scales down by 2/3 (e.g., 1080p to 720p); '
-             '[gray] converts to grayscale; '
-             '[deint] deinterlaces; '
-             '[anorm] applies audio normalization',
-        action='append', choices=['crop43', 'scale23', 'gray', 'deint', 'anorm'])
-    parser.add_argument('-x', '--crop-width',
-        help='left and right crop values',
-        nargs=2, type=int, metavar=('LEFT', 'RIGHT'))
-    parser.add_argument('-y', '--crop-height',
-        help='top and bottom crop values',
-        nargs=2, type=int, metavar=('TOP', 'BOTTOM'))
-    parser.add_argument('-g', '--gamma',
-        help='gramma correction (default 1.0; no correction)',
-        action='store', type=float, default=1.0)
-    parser.add_argument('-f', '--filter',
-        help='custom video filter, passed as -vf argument',
-        action='append')
-    parser.add_argument('-a', '--audio-filter',
-        help='custom audio filter, passed as -af argument',
-        action='append')
-    parser.add_argument('--volume', 
-        help='amplitude (volume) multiplier, < 1.0 to reduce volume, or > 1.0 to increase volume ',
-        action='store', type=float, default=1.0)
+
     # Note: 'pass' is a keyword, so used name 'only_pass' internally.
     parser.add_argument('--pass',
         help='run only a given pass',
         action='store', choices=['1', '2'], dest='only_pass')
-    parser.add_argument('--start',
-        help='starting input position (ffmpeg duration format)',
-        action='store')
-    parser.add_argument('--duration',
-        help='duration to encode (ffmpeg duration format)',
-        action='store')
-    parser.add_argument('--end',
-        help='ending input position (ffmpeg duration format)',
-        action='store')
     parser.add_argument('-#', '--always-number',
         help='always add a number to the output file name',
         action='store_true', default=False)
@@ -89,18 +51,83 @@ def main():
     parser.add_argument('-v', '--verbose',
         help='verbose output',
         action='store_true')
+
+    # Timecode/segment arguments.    
+    sgroup = parser.add_argument_group('input segment arguments',
+        'A single segment or multiple segments of the input file may be encoded using the '
+        'following arguments.  The first three may be used independently or combined, while the '
+        'last not not be combined with the first three.  The same arguments will be applied to '
+        'all input files.  All argument values are in ffmpeg duration format; see ffmpeg '
+        'documentation for more details.')
+    sgroup.add_argument('--start',
+        help='starting input position',
+        action='store')
+    sgroup.add_argument('--duration',
+        help='duration to encode',
+        action='store')
+    sgroup.add_argument('--end',
+        help='ending input position',
+        action='store')
+    sgroup.add_argument('--segment',
+        help='segment start and end input position; my be specified multiple times to encode '
+             'multiple segments to separate files; enables --always-number when specified more '
+             'than once',
+        nargs=2, metavar=('START', 'END'), action='append', dest='segments')
+
+    # Video/audio filter arguments.
+    fgroup = parser.add_argument_group('video/audio filter arguments',
+        'Standard crop filters (e.g., "-s crop43") are applied before custom crop values '
+        '(e.g., "-x 10 10"); crop filters are applied before scale filters (e.g., "-s scale23"); '
+        'and all standard filters are applied before custom (i.e., "-f" and "-a") filters.')
+    fgroup.add_argument('-s', '--standard-filter',
+        help='standard video/audio filter; '
+             '[crop43] crops horizontally to 4:3 aspect ratio; '
+             '[scale23] scales down by 2/3 (e.g., 1080p to 720p); '
+             '[gray] converts to grayscale; '
+             '[deint] deinterlaces; '
+             '[anorm] applies audio normalization',
+        action='append', choices=['crop43', 'scale23', 'gray', 'deint', 'anorm'])
+    fgroup.add_argument('-x', '--crop-width',
+        help='left and right crop values',
+        nargs=2, type=int, metavar=('LEFT', 'RIGHT'))
+    fgroup.add_argument('-y', '--crop-height',
+        help='top and bottom crop values',
+        nargs=2, type=int, metavar=('TOP', 'BOTTOM'))
+    fgroup.add_argument('-g', '--gamma',
+        help='gramma correction (default 1.0; no correction)',
+        action='store', type=float, default=1.0)
+    fgroup.add_argument('-f', '--filter',
+        help='custom video filter, passed as -vf argument to ffmpeg',
+        action='append')
+    fgroup.add_argument('-a', '--audio-filter',
+        help='custom audio filter, passed as -af argument to ffmpeg',
+        action='append')
+    fgroup.add_argument('--volume', 
+        help='amplitude (volume) multiplier, < 1.0 to reduce volume, or > 1.0 to increase volume',
+        action='store', type=float, default=1.0)
+
     parser.add_argument('video_files',
         help='video files to convert',
         action='store', metavar='video_file', nargs='+')
     args = parser.parse_args()
 
+    if args.segments is not None and len(args.segments) > 1:
+        args.always_number = True
+
+    if args.verbose >= 1:
+        print (args)
+
+    # Check for invalid combinations.
+    if args.duration is not None and args.end is not None:
+        parser.error('--duration and --end may not be used together')
+    if args.start is not None or args.duration is not None or args.end is not None:
+        if args.segments is not None:
+            parser.error('--segments may not be used with other segment selectors')
+
     # Check for valid files.
     for video_file in args.video_files:
         if not os.path.exists(video_file):
             parser.error('invalid file: ' + video_file)
-
-    if args.verbose >= 1:
-        print (args)
 
     ret = 0
     for file in args.video_files:
@@ -185,10 +212,10 @@ def build_audio_filter(args):
     return ' -af "' + af + '"' if af != '' else ''
 
 # --------------------------------------------------------------------------------------------------
-def build_pass1_command(args, file):
+def build_pass1_command(args, start, end, duration, file):
     fmt = (
-        'ffmpeg -nostdin'
-        '{seek}{start}{duration}{end}'
+        'ffmpeg -nostdin -hide_banner'
+        '{start_arg}{duration_arg}{end_arg}'
         ' -i "{file}"'
         ' -c:v libvpx-vp9'
         ' -crf {args.quality}'
@@ -198,7 +225,7 @@ def build_pass1_command(args, file):
         ' -auto-alt-ref 1'
         ' -lag-in-frames 25'
         ' -pix_fmt yuv420p'
-        '{vf}'
+        '{vf_arg}'
         ' -an'
         ' -f webm'
         ' -threads 8'
@@ -208,20 +235,19 @@ def build_pass1_command(args, file):
         ' -y'
         ' /dev/null')
     title = os.path.splitext(os.path.basename(file))[0]
-    vf = build_video_filter(args)
-    seek = ' -accurate_seek' if args.start is not None or args.end is not None else ''
-    start = ' -ss {0}'.format(args.start) if args.start is not None else ''
-    duration = ' -t {0}'.format(args.duration) if args.duration is not None else ''
-    end = ' -to {0}'.format(args.end) if args.end is not None else ''
+    vf_arg = build_video_filter(args)
+    start_arg = ' -accurate_seek -ss {0}'.format(start) if start is not None else ''
+    duration_arg = ' -t {0}'.format(duration) if duration is not None else ''
+    end_arg = ' -to {0}'.format(end) if end is not None else ''
     return fmt.format(
-        file=file, args=args, vf=vf, seek=seek, start=start, duration=duration, end=end,
-        title=title)
+        file=file, args=args, vf_arg=vf_arg, start_arg=start_arg, duration_arg=duration_arg,
+        end_arg=end_arg, title=title)
 
 # --------------------------------------------------------------------------------------------------
-def build_pass2_command(args, file):
+def build_pass2_command(args, start, end, duration, file):
     fmt = (
-        'ffmpeg -nostdin'
-        '{seek}{start}{duration}{end}'
+        'ffmpeg -nostdin -hide_banner'
+        '{start_arg}{duration_arg}{end_arg}'
         ' -i "{file}"'
         ' -c:v libvpx-vp9'
         ' -crf {args.quality}'
@@ -231,10 +257,10 @@ def build_pass2_command(args, file):
         ' -auto-alt-ref 1'
         ' -lag-in-frames 25'
         ' -pix_fmt yuv420p'
-        '{vf}'
+        '{vf_arg}'
         ' -c:a libopus'
         ' -b:a {args.audio_bitrate}k'
-        '{af}'
+        '{af_arg}'
         ' -f webm'
         ' -threads 8'
         ' -pass 2'
@@ -243,16 +269,15 @@ def build_pass2_command(args, file):
         ' -metadata title="{title}"'
         ' "{out_file}"')
     title = os.path.splitext(os.path.basename(file))[0]
-    vf = build_video_filter(args)
-    af = build_audio_filter(args)
-    seek = ' -accurate_seek' if args.start is not None or args.end is not None else ''
-    start = ' -ss {0}'.format(args.start) if args.start is not None else ''
-    duration = ' -t {0}'.format(args.duration) if args.duration is not None else ''
-    end = ' -to {0}'.format(args.end) if args.end is not None else ''
+    vf_arg = build_video_filter(args)
+    af_arg = build_audio_filter(args)
+    start_arg = ' -accurate_seek -ss {0}'.format(start) if start is not None else ''
+    duration_arg = ' -t {0}'.format(duration) if duration is not None else ''
+    end_arg = ' -to {0}'.format(end) if end is not None else ''
     out_file = get_safe_filename(title + '.webm', args.always_number)
     return fmt.format(
-        file=file, out_file=out_file, args=args, vf=vf, af=af, seek=seek, start=start,
-        duration=duration, end=end, title=title)
+        file=file, out_file=out_file, args=args, vf_arg=vf_arg, af_arg=af_arg, start_arg=start_arg,
+        duration_arg=duration_arg, end_arg=end_arg, title=title)
 
 # --------------------------------------------------------------------------------------------------
 def build_log_cmd(args, file):
@@ -263,15 +288,15 @@ def build_log_cmd(args, file):
         return 'mv "{0}-0.log" "{0}_{1:%Y%m%d-%H%M%S}.log"'.format(title, datetime.now())
 
 # --------------------------------------------------------------------------------------------------
-def process_file(args, file):
+def process_segment(args, start, end, duration, file):
     if args.only_pass is None or args.only_pass == '1':
-        pass1cmd = build_pass1_command(args, file)
+        pass1cmd = build_pass1_command(args, start, end, duration, file)
         if args.pretend or args.verbose >= 1:
             print(pass1cmd)
         if not args.pretend:
             subprocess.check_call(pass1cmd, shell=True)
     if args.only_pass is None or args.only_pass == '2':
-        pass2cmd = build_pass2_command(args, file)
+        pass2cmd = build_pass2_command(args, start, end, duration, file)
         logcmd = build_log_cmd(args, file)
         if args.pretend or args.verbose >= 1:
             print(pass2cmd)
@@ -281,6 +306,14 @@ def process_file(args, file):
             print(logcmd)
         if not args.pretend:
             subprocess.check_call(logcmd, shell=True)
+    
+# --------------------------------------------------------------------------------------------------
+def process_file(args, file):
+    if args.segments is not None:
+        for segment in args.segments:
+            process_segment(args, segment[0], segment[1], None, file)
+    else:
+        process_segment(args, args.start, args.end, args.duration, file)
 
 # --------------------------------------------------------------------------------------------------
 if __name__ == "__main__":
