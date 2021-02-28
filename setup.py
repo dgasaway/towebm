@@ -16,8 +16,8 @@ setup(
     long_description_content_type='text/x-rst',
     author='David Gasaway',
     author_email='dave@gasaway.org',
-    url='https://bitbucket.org/dgasaway/towebm',
-    download_url='https://bitbucket.org/dgasaway/towebm/downloads/',
+    url='https://github.com/dgasaway/towebm',
+    download_url='https://github.com/dgasaway/towebm/tags',
     license='GNU GPL v2',
     py_modules=['towebm/towebm', 'towebm/_version'],
     entry_points={
