@@ -152,13 +152,6 @@ def get_safe_filename(filename, always_number):
         return filename
 
 # --------------------------------------------------------------------------------------------------
-def append(s1, s2, delimit):
-    if s1 != '':
-        return s1 + delimit + s2
-    else:
-        return s2
-
-# --------------------------------------------------------------------------------------------------
 def get_video_filters(args):
     filters = []
     
