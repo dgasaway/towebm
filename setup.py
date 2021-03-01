@@ -23,6 +23,7 @@ setup(
     entry_points={
         'console_scripts': [
             'towebm = towebm.towebm:main',
+            'ffcat = towebm.ffcat:main',
         ],
     },
     python_requires='>=3.2',
