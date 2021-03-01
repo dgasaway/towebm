@@ -159,20 +159,20 @@ def append(s1, s2, delimit):
         return s2
 
 # --------------------------------------------------------------------------------------------------
-def build_video_filter(args):
-    vf = ''
-
+def get_video_filters(args):
+    filters = []
+    
     # Want to apply standard filters is a certain order, so do not loop.
     if args.standard_filter is not None:
         if 'deint' in args.standard_filter:
-            vf = append(vf, 'yadif=parity=tff', ',')
+            filters += ['yadif=parity=tff']
         if 'gray' in args.standard_filter:
-            vf = append(vf, 'format=gray', ',')
+            filters += ['format=gray']
         if 'crop43' in args.standard_filter:
-            vf = append(vf, 'crop=w=(in_h*4/3)', ',')
+            filters += ['crop=w=(in_h*4/3)']
 
     if args.gamma != 1.0:
-        vf = append(vf, 'eq=gamma={g}'.format(g=args.gamma), ',')
+        filters += ['eq=gamma={g}'.format(g=args.gamma)]
 
     if args.crop_width is not None or args.crop_height is not None:
         if args.crop_width is not None and args.crop_height is not None:
@@ -181,139 +181,150 @@ def build_video_filter(args):
             crop = 'crop=x={x[0]}:w=in_w-{x[0]}-{x[1]}'
         else:
             crop = 'crop=y={y[0]}:h=in_h-{y[0]}-{y[1]}'
-        vf = append(vf, crop.format(x=args.crop_width, y=args.crop_height), ',')
+        filters += [crop.format(x=args.crop_width, y=args.crop_height)]
     
     if args.standard_filter is not None:
         if 'scale23' in args.standard_filter:
-            vf = append(vf, 'scale=h=in_h*2/3:w=-1', ',')
+            filters += ['scale=h=in_h*2/3:w=-1']
     
     if args.filter is not None:
         for filter in args.filter:
-            vf = append(vf, filter, ',')
+            filters += [filter]
 
-    return ' -vf "' + vf + '"' if vf != '' else ''
+    return ['-vf', ','.join(filters)] if len(filters) > 0 else []
 
 # --------------------------------------------------------------------------------------------------
-def build_audio_filter(args):
-    af = ''
-
+def get_audio_filters(args):
+    filters = []
+    
     # Want to standard filters is a certain order, so do not loop.
     if args.standard_filter is not None:
         if 'anorm' in args.standard_filter:
-            af = append(af, 'dynaudnorm=g=301:r=0.9', ',')
+            filters += ['dynaudnorm=g=301:r=0.9']
 
     if args.volume != 1.0:
-        af = append(af, 'volume={v}'.format(v=args.volume), ',')
+        filters += ['volume={v}'.format(v=args.volume)]
 
     if args.audio_filter is not None:
         for filter in args.audio_filter:
-            af = append(af, filter, ',')
+            filters += [filter]
 
-    return ' -af "' + af + '"' if af != '' else ''
-
-# --------------------------------------------------------------------------------------------------
-def build_pass1_command(args, start, end, duration, file):
-    fmt = (
-        'ffmpeg -nostdin -hide_banner'
-        '{start_arg}{duration_arg}{end_arg}'
-        ' -i "{file}"'
-        ' -c:v libvpx-vp9'
-        ' -crf {args.quality}'
-        ' -b:v 0'
-        ' -tile-columns 2'
-        ' -row-mt 1'
-        ' -auto-alt-ref 1'
-        ' -lag-in-frames 25'
-        ' -pix_fmt yuv420p'
-        '{vf_arg}'
-        ' -an'
-        ' -f webm'
-        ' -threads 8'
-        ' -pass 1'
-        ' -passlogfile "{title}"'
-        ' -cpu-used 4'
-        ' -y'
-        ' /dev/null')
-    title = os.path.splitext(os.path.basename(file))[0]
-    vf_arg = build_video_filter(args)
-    start_arg = ' -accurate_seek -ss {0}'.format(start) if start is not None else ''
-    duration_arg = ' -t {0}'.format(duration) if duration is not None else ''
-    end_arg = ' -to {0}'.format(end) if end is not None else ''
-    return fmt.format(
-        file=file, args=args, vf_arg=vf_arg, start_arg=start_arg, duration_arg=duration_arg,
-        end_arg=end_arg, title=title)
+    return ['-af', ','.join(filters)] if len(filters) > 0 else []
 
 # --------------------------------------------------------------------------------------------------
-def build_pass2_command(args, start, end, duration, file):
-    fmt = (
-        'ffmpeg -nostdin -hide_banner'
-        '{start_arg}{duration_arg}{end_arg}'
-        ' -i "{file}"'
-        ' -c:v libvpx-vp9'
-        ' -crf {args.quality}'
-        ' -b:v 0'
-        ' -tile-columns 2'
-        ' -row-mt 1'
-        ' -auto-alt-ref 1'
-        ' -lag-in-frames 25'
-        ' -pix_fmt yuv420p'
-        '{vf_arg}'
-        ' -c:a libopus'
-        ' -b:a {args.audio_bitrate}k'
-        '{af_arg}'
-        ' -f webm'
-        ' -threads 8'
-        ' -pass 2'
-        ' -passlogfile "{title}"'
-        ' -cpu-used 2'
-        ' -metadata title="{title}"'
-        ' "{out_file}"')
-    title = os.path.splitext(os.path.basename(file))[0]
-    vf_arg = build_video_filter(args)
-    af_arg = build_audio_filter(args)
-    start_arg = ' -accurate_seek -ss {0}'.format(start) if start is not None else ''
-    duration_arg = ' -t {0}'.format(duration) if duration is not None else ''
-    end_arg = ' -to {0}'.format(end) if end is not None else ''
-    out_file = get_safe_filename(title + '.webm', args.always_number)
-    return fmt.format(
-        file=file, out_file=out_file, args=args, vf_arg=vf_arg, af_arg=af_arg, start_arg=start_arg,
-        duration_arg=duration_arg, end_arg=end_arg, title=title)
+def get_pass1_command(args, start, end, duration, file_name):
+    title = os.path.splitext(os.path.basename(file_name))[0]
+
+    result = ['ffmpeg', '-nostdin', '-hide_banner']
+    if start is not None:
+        result += ['-accurate_seek', '-ss', start]
+    if end is not None:
+        result += ['-to', end]
+    if duration is not None:
+        result += ['-t', duration]
+    result += [
+        '-i', file_name,
+        '-c:v', 'libvpx-vp9',
+        '-crf', str(args.quality),
+        '-b:v', '0',
+        '-tile-columns', '2',
+        '-row-mt', '1',
+        '-auto-alt-ref', '1',
+        '-lag-in-frames', '25',
+        '-pix_fmt', 'yuv420p'
+        ]
+    result += get_video_filters(args)
+    result += [
+        '-an',
+        '-f', 'webm',
+        '-threads', '8',
+        '-pass', '1',
+        '-passlogfile', title,
+        '-cpu-used', '4',
+        '-y',
+        '/dev/null'
+        ]
+
+    return result
 
 # --------------------------------------------------------------------------------------------------
-def build_log_cmd(args, file):
-    title = os.path.splitext(os.path.basename(file))[0]
+def get_pass2_command(args, start, end, duration, file_name):
+    title = os.path.splitext(os.path.basename(file_name))[0]
+    
+    result = ['ffmpeg', '-nostdin', '-hide_banner']
+    if start is not None:
+        result += ['-accurate_seek', '-ss', start]
+    if end is not None:
+        result += ['-to', end]
+    if duration is not None:
+        result += ['-t', duration]
+    result += [
+        '-i', file_name,
+        '-c:v', 'libvpx-vp9',
+        '-crf', str(args.quality),
+        '-b:v', '0',
+        '-tile-columns', '2',
+        '-row-mt', '1',
+        '-auto-alt-ref', '1',
+        '-lag-in-frames', '25',
+        '-pix_fmt', 'yuv420p'
+        ]
+    result += get_video_filters(args)
+    result += [
+        '-c:a', 'libopus',
+        '-b:a', '{0}k'.format(args.audio_bitrate)
+        ]
+    result += get_audio_filters(args)
+    result += [
+        '-f', 'webm',
+        '-threads', '8',
+        '-pass', '2',
+        '-passlogfile', title,
+        '-cpu-used', '2',
+        '-metadata', 'title="{0}"'.format(title),
+        get_safe_filename(title + '.webm', args.always_number)
+        ]
+
+    return result
+
+# --------------------------------------------------------------------------------------------------
+def get_log_command(args, file_name):
+    title = os.path.splitext(os.path.basename(file_name))[0]
     if args.delete_log:
-        return 'rm "{0}-0.log"'.format(title)
+        return ['rm', '{0}-0.log'.format(title)]
     else:
-        return 'mv "{0}-0.log" "{0}_{1:%Y%m%d-%H%M%S}.log"'.format(title, datetime.now())
+        return ['mv', 
+                '{0}-0.log'.format(title),
+                '{0}_{1:%Y%m%d-%H%M%S}.log'.format(title, datetime.now())]
+    
 
 # --------------------------------------------------------------------------------------------------
-def process_segment(args, start, end, duration, file):
+def process_segment(args, start, end, duration, file_name):
     if args.only_pass is None or args.only_pass == '1':
-        pass1cmd = build_pass1_command(args, start, end, duration, file)
+        pass1cmd = get_pass1_command(args, start, end, duration, file_name)
         if args.pretend or args.verbose >= 1:
             print(pass1cmd)
         if not args.pretend:
-            subprocess.check_call(pass1cmd, shell=True)
+            subprocess.check_call(pass1cmd)
     if args.only_pass is None or args.only_pass == '2':
-        pass2cmd = build_pass2_command(args, start, end, duration, file)
-        logcmd = build_log_cmd(args, file)
+        pass2cmd = get_pass2_command(args, start, end, duration, file_name)
+        logcmd = get_log_command(args, file_name)
         if args.pretend or args.verbose >= 1:
             print(pass2cmd)
         if not args.pretend:
-            subprocess.check_call(pass2cmd, shell=True)
+            subprocess.check_call(pass2cmd)
         if args.pretend or args.verbose >= 1:
             print(logcmd)
         if not args.pretend:
-            subprocess.check_call(logcmd, shell=True)
+            subprocess.check_call(logcmd)
     
 # --------------------------------------------------------------------------------------------------
-def process_file(args, file):
+def process_file(args, file_name):
     if args.segments is not None:
         for segment in args.segments:
-            process_segment(args, segment[0], segment[1], None, file)
+            process_segment(args, segment[0], segment[1], None, file_name)
     else:
-        process_segment(args, args.start, args.end, args.duration, file)
+        process_segment(args, args.start, args.end, args.duration, file_name)
 
 # --------------------------------------------------------------------------------------------------
 if __name__ == "__main__":

@@ -50,6 +50,6 @@ def main():
                        args.output_file]
         if args.verbose >= 1:
             print(ffmpeg_args)
-        subprocess.call(ffmpeg_args)
+        subprocess.check_call(ffmpeg_args)
     finally:
         os.remove(file_list.name)
