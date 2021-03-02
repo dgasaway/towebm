@@ -58,23 +58,23 @@ def main():
         action='store_true')
 
     # Timecode/segment arguments.    
-    sgroup = parser.add_argument_group('input segment arguments',
-        'A single segment or multiple segments of the input file may be encoded using the '
+    sgroup = parser.add_argument_group('source segment arguments',
+        'A single segment or multiple segments of a source file may be encoded using the '
         'following arguments.  The first three may be used independently or combined, while the '
         'last not not be combined with the first three.  The same arguments will be applied to '
-        'all input files.  All argument values are in ffmpeg duration format; see ffmpeg '
+        'all source files.  All argument values are in ffmpeg duration format; see ffmpeg '
         'documentation for more details.')
     sgroup.add_argument('--start',
-        help='starting input position',
+        help='starting source position',
         action='store')
     sgroup.add_argument('--duration',
         help='duration to encode',
         action='store')
     sgroup.add_argument('--end',
-        help='ending input position',
+        help='ending source position',
         action='store')
     sgroup.add_argument('--segment',
-        help='segment start and end input position; my be specified multiple times to encode '
+        help='segment start and end source position; my be specified multiple times to encode '
              'multiple segments to separate files; enables --always-number when specified more '
              'than once',
         nargs=2, metavar=('START', 'END'), action='append', dest='segments')
@@ -117,9 +117,9 @@ def main():
         help='amplitude (volume) multiplier, < 1.0 to reduce volume, or > 1.0 to increase volume',
         action='store', type=float, default=1.0)
 
-    parser.add_argument('video_files',
-        help='video files to convert',
-        action='store', metavar='video_file', nargs='+')
+    parser.add_argument('source_files',
+        help='source video files to convert',
+        action='store', metavar='source_file', nargs='+')
     args = parser.parse_args()
 
     if args.segments is not None and len(args.segments) > 1:
@@ -140,18 +140,18 @@ def main():
             
 
     # Check for valid files.
-    for video_file in args.video_files:
-        if not os.path.exists(video_file):
-            parser.error('invalid file: ' + video_file)
+    for source_file in args.source_files:
+        if not os.path.exists(source_file):
+            parser.error('invalid source file: ' + source_file)
 
     ret = 0
-    for file in args.video_files:
+    for source_file in args.source_files:
         try:
-            process_file(args, file)
+            process_file(args, source_file)
         except subprocess.CalledProcessError as e:
             if ret == 0 or e.returncode > ret:
                 ret = e.returncode
-            print('Execution error, proceeding to next input file.')
+            print('Execution error, proceeding to next source file.')
     exit(ret)
 
 # --------------------------------------------------------------------------------------------------
@@ -219,8 +219,8 @@ def get_video_filters(args, segment):
         if 'scale23' in args.standard_filter:
             filters += ['scale=h=in_h*2/3:w=-1']
     
-    # The fade filters take a start time relative to the start of the output, rather thatn the start
-    # of the input.  So, fade in will start at 0 secs.  Fade out needs to get the output duration
+    # The fade filters take a start time relative to the start of the output, rather than the start
+    # of the source.  So, fade in will start at 0 secs.  Fade out needs to get the output duration
     # and subtract the fade out duration.
     if args.fade_in is not None:
         filters += ['fade=t=in:st=0:d={0}'.format(args.fade_in)]
@@ -242,7 +242,7 @@ def get_video_filters(args, segment):
 def get_audio_filters(args, segment):
     filters = []
     
-    # Want to standard filters is a certain order, so do not loop.
+    # Want to apply standard filters is a certain order, so do not loop.
     if args.standard_filter is not None:
         if 'anorm' in args.standard_filter:
             filters += ['dynaudnorm=g=301:r=0.9']
@@ -250,8 +250,8 @@ def get_audio_filters(args, segment):
     if args.volume != 1.0:
         filters += ['volume={v}'.format(v=args.volume)]
 
-    # The fade filters take a start time relative to the start of the output, rather thatn the start
-    # of the input.  So, fade in will start at 0 secs.  Fade out needs to get the output duration
+    # The fade filters take a start time relative to the start of the output, rather than the start
+    # of the source.  So, fade in will start at 0 secs.  Fade out needs to get the output duration
     # and subtract the fade out duration.
     if args.fade_in is not None:
         filters += ['afade=t=in:st=0:d={0}'.format(args.fade_in)]
