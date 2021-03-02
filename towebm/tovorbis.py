@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-# towebm - Converts videos to webm format (vp9+opus) using ffmpeg.
+# towebm - Converts audio/video files to audio-only vorbis using ffmpeg.
 # Copyright (C) 2021 David Gasaway
 # https://github.com/dgasaway/towebm
 
@@ -18,7 +18,6 @@
 import sys
 import os
 import subprocess
-from datetime import datetime
 from argparse import ArgumentParser
 from towebm._version import __version__
 from towebm.common import *
@@ -26,28 +25,18 @@ from towebm.common import *
 # --------------------------------------------------------------------------------------------------
 def main():
     parser = ArgumentParser(
-        description='Converts videos to webm format (vp9+opus) using a two-pass ffmpeg encode.',
+        description='Converts audio/video files to audio-only vorbis using ffmpeg.',
         fromfile_prefix_chars="@")
     parser.add_argument('--version', action='version', version='%(prog)s ' + __version__)
     parser.add_argument('-q', '--quality',
-        help='video quality (lower is better, default 30)',
-        action='store', type=int, default=30)
-    parser.add_argument('-b', '--audio-bitrate',
-        help='audio bitrate in kbps (default 160)',
-        action='store', type=int, default=160)
+        help='audio quality (default 6.0)',
+        action='store', type=float, default=6.0)
 
-    # Note: 'pass' is a keyword, so used name 'only_pass' internally.
-    parser.add_argument('--pass',
-        help='run only a given pass',
-        action='store', choices=['1', '2'], dest='only_pass')
     parser.add_argument('-#', '--always-number',
         help='always add a number to the output file name',
         action='store_true', default=False)
     parser.add_argument('--pretend',
         help='display command lines but do not execute',
-        action='store_true')
-    parser.add_argument('--delete-log',
-        help='delete pass 1 log (otherwise keep with timestamp)',
         action='store_true')
     parser.add_argument('-v', '--verbose',
         help='verbose output',
@@ -76,40 +65,19 @@ def main():
         nargs=2, metavar=('START', 'END'), action='append', dest='segments')
 
     # Video/audio filter arguments.
-    fgroup = parser.add_argument_group('video/audio filter arguments',
-        'Standard crop filters (e.g., "-s crop43") are applied before custom crop values '
-        '(e.g., "-x 10 10"); crop filters are applied before scale filters (e.g., "-s scale23"); '
-        'and all standard filters are applied before custom (i.e., "-f" and "-a") filters.')
-    fgroup.add_argument('-s', '--standard-filter',
-        help='standard video/audio filter; '
-             '[crop43] crops horizontally to 4:3 aspect ratio; '
-             '[scale23] scales down by 2/3 (e.g., 1080p to 720p); '
-             '[gray] converts to grayscale; '
-             '[deint] deinterlaces',
-        action='append', choices=['crop43', 'scale23', 'gray', 'deint'])
+    fgroup = parser.add_argument_group('filter arguments')
     fgroup.add_argument('--fade-in',
         help='apply an audio and video fade-in at the start of each output',
         action='store', type=float, metavar='SECONDS')
     fgroup.add_argument('--fade-out',
         help='apply an audio and video fade-out at the end of each output',
         action='store', type=float, metavar='SECONDS')
-    fgroup.add_argument('-x', '--crop-width',
-        help='left and right crop values',
-        nargs=2, type=int, metavar=('LEFT', 'RIGHT'))
-    fgroup.add_argument('-y', '--crop-height',
-        help='top and bottom crop values',
-        nargs=2, type=int, metavar=('TOP', 'BOTTOM'))
-    fgroup.add_argument('-g', '--gamma',
-        help='gramma correction (default 1.0; no correction)',
-        action='store', type=float, default=1.0)
     fgroup.add_argument('-f', '--filter',
-        help='custom video filter, passed as -vf argument to ffmpeg',
-        action='append')
-    fgroup.add_argument('-a', '--audio-filter',
         help='custom audio filter, passed as -af argument to ffmpeg',
-        action='append')
+        action='append', dest='audio_filter')
     fgroup.add_argument('--volume', 
-        help='amplitude (volume) multiplier, < 1.0 to reduce volume, or > 1.0 to increase volume',
+        help='amplitude (volume) multiplier, < 1.0 to reduce volume, or > 1.0 to increase volume; '
+             'recommended to use replaygain to tag the file post-conversion, instead',
         action='store', type=float, default=1.0)
 
     parser.add_argument('source_files',
@@ -132,7 +100,6 @@ def main():
     if args.fade_out is not None:
         if args.duration is None and args.end is None and args.segments is None:
             parser.error('--fade-out requires --duration, --end, or --segment')
-            
 
     # Check for valid files.
     for source_file in args.source_files:
@@ -150,101 +117,32 @@ def main():
     exit(ret)
 
 # --------------------------------------------------------------------------------------------------
-def get_pass1_command(args, segment, file_name):
-    title = os.path.splitext(os.path.basename(file_name))[0]
-
-    result = ['ffmpeg', '-nostdin', '-hide_banner']
-    result += get_segment_arguments(segment)
-    result += [
-        '-i', file_name,
-        '-c:v', 'libvpx-vp9',
-        '-crf', str(args.quality),
-        '-b:v', '0',
-        '-tile-columns', '2',
-        '-row-mt', '1',
-        '-auto-alt-ref', '1',
-        '-lag-in-frames', '25',
-        '-pix_fmt', 'yuv420p'
-        ]
-    result += get_video_filters(args, segment)
-    result += [
-        '-an',
-        '-f', 'webm',
-        '-threads', '8',
-        '-pass', '1',
-        '-passlogfile', title,
-        '-cpu-used', '4',
-        '-y',
-        '/dev/null'
-        ]
-
-    return result
-
-# --------------------------------------------------------------------------------------------------
-def get_pass2_command(args, segment, file_name):
+def get_ffmpeg_command(args, segment, file_name):
     title = os.path.splitext(os.path.basename(file_name))[0]
     
     result = ['ffmpeg', '-nostdin', '-hide_banner']
     result += get_segment_arguments(segment)
     result += [
         '-i', file_name,
-        '-c:v', 'libvpx-vp9',
-        '-crf', str(args.quality),
-        '-b:v', '0',
-        '-tile-columns', '2',
-        '-row-mt', '1',
-        '-auto-alt-ref', '1',
-        '-lag-in-frames', '25',
-        '-pix_fmt', 'yuv420p'
-        ]
-    result += get_video_filters(args, segment)
-    result += [
-        '-c:a', 'libopus',
-        '-b:a', '{0}k'.format(args.audio_bitrate)
+        '-vn',
+        '-c:a', 'libvorbis',
+        '-aq', str(args.quality)
         ]
     result += get_audio_filters(args, segment)
     result += [
-        '-f', 'webm',
-        '-threads', '8',
-        '-pass', '2',
-        '-passlogfile', title,
-        '-cpu-used', '2',
-        '-metadata', 'title={0}'.format(title),
-        get_safe_filename(title + '.webm', args.always_number)
+        #'-metadata:s:a:0', 'title={0}'.format(title),
+        get_safe_filename(title + '.ogg', args.always_number)
         ]
 
     return result
 
 # --------------------------------------------------------------------------------------------------
-def get_log_command(args, file_name):
-    title = os.path.splitext(os.path.basename(file_name))[0]
-    if args.delete_log:
-        return ['rm', '{0}-0.log'.format(title)]
-    else:
-        return ['mv', 
-                '{0}-0.log'.format(title),
-                '{0}_{1:%Y%m%d-%H%M%S}.log'.format(title, datetime.now())]
-    
-
-# --------------------------------------------------------------------------------------------------
 def process_segment(args, segment, file_name):
-    if args.only_pass is None or args.only_pass == '1':
-        pass1cmd = get_pass1_command(args, segment, file_name)
-        if args.pretend or args.verbose >= 1:
-            print(pass1cmd)
-        if not args.pretend:
-            subprocess.check_call(pass1cmd)
-    if args.only_pass is None or args.only_pass == '2':
-        pass2cmd = get_pass2_command(args, segment, file_name)
-        logcmd = get_log_command(args, file_name)
-        if args.pretend or args.verbose >= 1:
-            print(pass2cmd)
-        if not args.pretend:
-            subprocess.check_call(pass2cmd)
-        if args.pretend or args.verbose >= 1:
-            print(logcmd)
-        if not args.pretend:
-            subprocess.check_call(logcmd)
+    cmd = get_ffmpeg_command(args, segment, file_name)
+    if args.pretend or args.verbose >= 1:
+        print(cmd)
+    if not args.pretend:
+        subprocess.check_call(cmd)
     
 # --------------------------------------------------------------------------------------------------
 def process_file(args, file_name):

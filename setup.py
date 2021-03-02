@@ -23,6 +23,8 @@ setup(
     entry_points={
         'console_scripts': [
             'towebm = towebm.towebm:main',
+            'tovorbis = towebm.tovorbis:main',
+            'toopus = towebm.toopus:main',
             'ffcat = towebm.ffcat:main',
         ],
     },
