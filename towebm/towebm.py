@@ -18,9 +18,14 @@
 import sys
 import os
 import subprocess
+import re
+from collections import namedtuple
 from datetime import datetime
 from argparse import ArgumentParser
 from towebm._version import __version__
+
+# --------------------------------------------------------------------------------------------------
+Segment = namedtuple('Segment', 'start, end, duration')
 
 # --------------------------------------------------------------------------------------------------
 def main():
@@ -87,6 +92,12 @@ def main():
              '[deint] deinterlaces; '
              '[anorm] applies audio normalization',
         action='append', choices=['crop43', 'scale23', 'gray', 'deint', 'anorm'])
+    fgroup.add_argument('--fade-in',
+        help='apply an audio and video fade-in at the start of each output',
+        action='store', type=float, metavar='SECONDS')
+    fgroup.add_argument('--fade-out',
+        help='apply an audio and video fade-out at the end of each output',
+        action='store', type=float, metavar='SECONDS')
     fgroup.add_argument('-x', '--crop-width',
         help='left and right crop values',
         nargs=2, type=int, metavar=('LEFT', 'RIGHT'))
@@ -123,6 +134,10 @@ def main():
     if args.start is not None or args.duration is not None or args.end is not None:
         if args.segments is not None:
             parser.error('--segments may not be used with other segment selectors')
+    if args.fade_out is not None:
+        if args.duration is None and args.end is None and args.segments is None:
+            parser.error('--fade-out requires --duration, --end, or --segment')
+            
 
     # Check for valid files.
     for video_file in args.video_files:
@@ -152,7 +167,31 @@ def get_safe_filename(filename, always_number):
         return filename
 
 # --------------------------------------------------------------------------------------------------
-def get_video_filters(args):
+def duration_to_seconds(duration):
+    pattern = r'^((((?P<hms_grp1>\d*):)?((?P<hms_grp2>\d*):)?((?P<hms_secs>\d+([.]\d*)?)))|' \
+              '((?P<smu_value>\d+([.]\d*)?)(?P<smu_units>s|ms|us)))$'
+    match = re.match(pattern, duration)
+    if match:
+        groups = match.groupdict()
+        if groups['hms_secs'] is not None:
+            value = float(groups['hms_secs'])
+            if groups['hms_grp2'] is not None:
+                value += int(groups['hms_grp1']) * 60 * 60 + int(groups['hms_grp2']) * 60
+            elif groups['hms_grp1'] is not None:
+                value += int(groups['hms_grp1']) * 60
+        else:
+            value = float(groups['smu_value'])
+            units = groups['smu_units']
+            if units == 'ms':
+                value /= 1000.0
+            elif units == 'us':
+                value /= 1000000.0
+        return value
+    else:
+        return None
+
+# --------------------------------------------------------------------------------------------------
+def get_video_filters(args, segment):
     filters = []
     
     # Want to apply standard filters is a certain order, so do not loop.
@@ -180,6 +219,19 @@ def get_video_filters(args):
         if 'scale23' in args.standard_filter:
             filters += ['scale=h=in_h*2/3:w=-1']
     
+    # The fade filters take a start time relative to the start of the output, rather thatn the start
+    # of the input.  So, fade in will start at 0 secs.  Fade out needs to get the output duration
+    # and subtract the fade out duration.
+    if args.fade_in is not None:
+        filters += ['fade=t=in:st=0:d={0}'.format(args.fade_in)]
+    if args.fade_out is not None:
+        if segment.duration is not None:
+            duration = duration_to_seconds(segment.duration)
+        else:
+            start = 0.0 if segment.start is None else duration_to_seconds(segment.start)
+            duration = duration_to_seconds(segment.end) - start
+        filters += ['fade=t=out:st={0}:d={1}'.format(duration - args.fade_out, args.fade_out)]
+        
     if args.filter is not None:
         for filter in args.filter:
             filters += [filter]
@@ -187,7 +239,7 @@ def get_video_filters(args):
     return ['-vf', ','.join(filters)] if len(filters) > 0 else []
 
 # --------------------------------------------------------------------------------------------------
-def get_audio_filters(args):
+def get_audio_filters(args, segment):
     filters = []
     
     # Want to standard filters is a certain order, so do not loop.
@@ -198,6 +250,19 @@ def get_audio_filters(args):
     if args.volume != 1.0:
         filters += ['volume={v}'.format(v=args.volume)]
 
+    # The fade filters take a start time relative to the start of the output, rather thatn the start
+    # of the input.  So, fade in will start at 0 secs.  Fade out needs to get the output duration
+    # and subtract the fade out duration.
+    if args.fade_in is not None:
+        filters += ['afade=t=in:st=0:d={0}'.format(args.fade_in)]
+    if args.fade_out is not None:
+        if segment.duration is not None:
+            duration = duration_to_seconds(segment.duration)
+        else:
+            start = 0.0 if segment.start is None else duration_to_seconds(segment.start)
+            duration = duration_to_seconds(segment.end) - start
+        filters += ['afade=t=out:st={0}:d={1}'.format(duration - args.fade_out, args.fade_out)]
+        
     if args.audio_filter is not None:
         for filter in args.audio_filter:
             filters += [filter]
@@ -205,16 +270,16 @@ def get_audio_filters(args):
     return ['-af', ','.join(filters)] if len(filters) > 0 else []
 
 # --------------------------------------------------------------------------------------------------
-def get_pass1_command(args, start, end, duration, file_name):
+def get_pass1_command(args, segment, file_name):
     title = os.path.splitext(os.path.basename(file_name))[0]
 
     result = ['ffmpeg', '-nostdin', '-hide_banner']
-    if start is not None:
-        result += ['-accurate_seek', '-ss', start]
-    if end is not None:
-        result += ['-to', end]
-    if duration is not None:
-        result += ['-t', duration]
+    if segment.start is not None:
+        result += ['-accurate_seek', '-ss', segment.start]
+    if segment.end is not None:
+        result += ['-to', segment.end]
+    if segment.duration is not None:
+        result += ['-t', segment.duration]
     result += [
         '-i', file_name,
         '-c:v', 'libvpx-vp9',
@@ -226,7 +291,7 @@ def get_pass1_command(args, start, end, duration, file_name):
         '-lag-in-frames', '25',
         '-pix_fmt', 'yuv420p'
         ]
-    result += get_video_filters(args)
+    result += get_video_filters(args, segment)
     result += [
         '-an',
         '-f', 'webm',
@@ -241,16 +306,16 @@ def get_pass1_command(args, start, end, duration, file_name):
     return result
 
 # --------------------------------------------------------------------------------------------------
-def get_pass2_command(args, start, end, duration, file_name):
+def get_pass2_command(args, segment, file_name):
     title = os.path.splitext(os.path.basename(file_name))[0]
     
     result = ['ffmpeg', '-nostdin', '-hide_banner']
-    if start is not None:
-        result += ['-accurate_seek', '-ss', start]
-    if end is not None:
-        result += ['-to', end]
-    if duration is not None:
-        result += ['-t', duration]
+    if segment.start is not None:
+        result += ['-accurate_seek', '-ss', segment.start]
+    if segment.end is not None:
+        result += ['-to', segment.end]
+    if segment.duration is not None:
+        result += ['-t', segment.duration]
     result += [
         '-i', file_name,
         '-c:v', 'libvpx-vp9',
@@ -262,12 +327,12 @@ def get_pass2_command(args, start, end, duration, file_name):
         '-lag-in-frames', '25',
         '-pix_fmt', 'yuv420p'
         ]
-    result += get_video_filters(args)
+    result += get_video_filters(args, segment)
     result += [
         '-c:a', 'libopus',
         '-b:a', '{0}k'.format(args.audio_bitrate)
         ]
-    result += get_audio_filters(args)
+    result += get_audio_filters(args, segment)
     result += [
         '-f', 'webm',
         '-threads', '8',
@@ -292,15 +357,15 @@ def get_log_command(args, file_name):
     
 
 # --------------------------------------------------------------------------------------------------
-def process_segment(args, start, end, duration, file_name):
+def process_segment(args, segment, file_name):
     if args.only_pass is None or args.only_pass == '1':
-        pass1cmd = get_pass1_command(args, start, end, duration, file_name)
+        pass1cmd = get_pass1_command(args, segment, file_name)
         if args.pretend or args.verbose >= 1:
             print(pass1cmd)
         if not args.pretend:
             subprocess.check_call(pass1cmd)
     if args.only_pass is None or args.only_pass == '2':
-        pass2cmd = get_pass2_command(args, start, end, duration, file_name)
+        pass2cmd = get_pass2_command(args, segment, file_name)
         logcmd = get_log_command(args, file_name)
         if args.pretend or args.verbose >= 1:
             print(pass2cmd)
@@ -315,9 +380,9 @@ def process_segment(args, start, end, duration, file_name):
 def process_file(args, file_name):
     if args.segments is not None:
         for segment in args.segments:
-            process_segment(args, segment[0], segment[1], None, file_name)
+            process_segment(args, Segment(segment[0], segment[1], None), file_name)
     else:
-        process_segment(args, args.start, args.end, args.duration, file_name)
+        process_segment(args, Segment(args.start, args.end, args.duration), file_name)
 
 # --------------------------------------------------------------------------------------------------
 if __name__ == "__main__":
