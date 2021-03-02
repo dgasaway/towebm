@@ -334,7 +334,7 @@ def get_pass2_command(args, segment, file_name):
         '-pass', '2',
         '-passlogfile', title,
         '-cpu-used', '2',
-        '-metadata', 'title="{0}"'.format(title),
+        '-metadata', 'title={0}'.format(title),
         get_safe_filename(title + '.webm', args.always_number)
         ]
 
