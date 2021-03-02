@@ -89,9 +89,8 @@ def main():
              '[crop43] crops horizontally to 4:3 aspect ratio; '
              '[scale23] scales down by 2/3 (e.g., 1080p to 720p); '
              '[gray] converts to grayscale; '
-             '[deint] deinterlaces; '
-             '[anorm] applies audio normalization',
-        action='append', choices=['crop43', 'scale23', 'gray', 'deint', 'anorm'])
+             '[deint] deinterlaces',
+        action='append', choices=['crop43', 'scale23', 'gray', 'deint'])
     fgroup.add_argument('--fade-in',
         help='apply an audio and video fade-in at the start of each output',
         action='store', type=float, metavar='SECONDS')
@@ -243,10 +242,6 @@ def get_audio_filters(args, segment):
     filters = []
     
     # Want to apply standard filters is a certain order, so do not loop.
-    if args.standard_filter is not None:
-        if 'anorm' in args.standard_filter:
-            filters += ['dynaudnorm=g=301:r=0.9']
-
     if args.volume != 1.0:
         filters += ['volume={v}'.format(v=args.volume)]
 
