@@ -16,8 +16,97 @@
 import os
 import re
 from collections import namedtuple
+from towebm._version import __version__
 
 Segment = namedtuple('Segment', 'start, end, duration')
+
+# --------------------------------------------------------------------------------------------------
+def add_basic_arguments(parser):
+    """
+    Adds basic arguments that apply to all scripts to a parser.
+    """
+    parser.add_argument('--version', action='version', version='%(prog)s ' + __version__)
+    parser.add_argument('-#', '--always-number',
+        help='always add a number to the output file name',
+        action='store_true', default=False)
+    parser.add_argument('--pretend',
+        help='display command lines but do not execute',
+        action='store_true')
+    parser.add_argument('-v', '--verbose',
+        help='verbose output',
+        action='store_true')
+
+# --------------------------------------------------------------------------------------------------
+def add_timecode_arguments(parser):
+    """
+    Adds timecode arguments to a parser.
+    """
+    sgroup = parser.add_argument_group('source segment arguments',
+        'A single segment or multiple segments of a source file may be encoded using the '
+        'following arguments.  The first three may be used independently or combined, while the '
+        'last not not be combined with the first three.  The same arguments will be applied to '
+        'all source files.  All argument values are in ffmpeg duration format; see ffmpeg '
+        'documentation for more details.')
+    sgroup.add_argument('--start',
+        help='starting source position',
+        action='store')
+    sgroup.add_argument('--duration',
+        help='duration to encode',
+        action='store')
+    sgroup.add_argument('--end',
+        help='ending source position',
+        action='store')
+    sgroup.add_argument('--segment',
+        help='segment start and end source position; my be specified multiple times to encode '
+             'multiple segments to separate files; enables --always-number when specified more '
+             'than once',
+        nargs=2, metavar=('START', 'END'), action='append', dest='segments')
+    return sgroup
+
+# --------------------------------------------------------------------------------------------------
+def add_audio_filter_arguments(parser):
+    """
+    Adds filter arguments that apply to audio-only encodes to a parser.
+    """
+    fgroup = parser.add_argument_group('filter arguments')
+    fgroup.add_argument('--fade-in',
+        help='apply an audio fade-in at the start of each output',
+        action='store', type=float, metavar='SECONDS')
+    fgroup.add_argument('--fade-out',
+        help='apply an audio fade-out at the end of each output',
+        action='store', type=float, metavar='SECONDS')
+    fgroup.add_argument('-f', '--filter',
+        help='custom audio filter, passed as -af argument to ffmpeg',
+        action='append', dest='audio_filter')
+    fgroup.add_argument('--volume', 
+        help='amplitude (volume) multiplier, < 1.0 to reduce volume, or > 1.0 to increase volume; '
+             'recommended to use replaygain to tag the file post-conversion, instead',
+        action='store', type=float, default=1.0)
+
+# --------------------------------------------------------------------------------------------------
+def check_timecode_arguments(parser, args):
+    """
+    Raises a parser error if args contains an invalid combination of --start, --end, --duration,
+    and --segment.
+    """
+    # Check for invalid combinations.
+    if args.duration is not None and args.end is not None:
+        parser.error('--duration and --end may not be used together')
+    if args.start is not None or args.duration is not None or args.end is not None:
+        if args.segments is not None:
+            parser.error('--segments may not be used with other segment selectors')
+    if args.fade_out is not None:
+        if args.duration is None and args.end is None and args.segments is None:
+            parser.error('--fade-out requires --duration, --end, or --segment')
+
+# --------------------------------------------------------------------------------------------------
+def check_source_files_exist(parser, args):
+    """
+    Raises a parser error if args contains any source files that do not exist.
+    """
+    for source_file in args.source_files:
+        if not os.path.exists(source_file):
+            parser.error('invalid source file: ' + source_file)
 
 # --------------------------------------------------------------------------------------------------
 def get_safe_filename(filename, always_number):
@@ -140,3 +229,4 @@ def get_segment_arguments(segment):
     if segment.duration is not None:
         result += ['-t', segment.duration]
     return result
+

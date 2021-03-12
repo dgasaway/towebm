@@ -20,7 +20,6 @@ import os
 import subprocess
 from datetime import datetime
 from argparse import ArgumentParser
-from towebm._version import __version__
 from towebm.common import *
 
 # --------------------------------------------------------------------------------------------------
@@ -28,52 +27,23 @@ def main():
     parser = ArgumentParser(
         description='Converts videos to webm format (vp9+opus) using a two-pass ffmpeg encode.',
         fromfile_prefix_chars="@")
-    parser.add_argument('--version', action='version', version='%(prog)s ' + __version__)
+    add_basic_arguments(parser)
     parser.add_argument('-q', '--quality',
         help='video quality (lower is better, default 30)',
         action='store', type=int, default=30)
     parser.add_argument('-b', '--audio-bitrate',
         help='audio bitrate in kbps (default 160)',
         action='store', type=int, default=160)
-
     # Note: 'pass' is a keyword, so used name 'only_pass' internally.
     parser.add_argument('--pass',
         help='run only a given pass',
         action='store', choices=['1', '2'], dest='only_pass')
-    parser.add_argument('-#', '--always-number',
-        help='always add a number to the output file name',
-        action='store_true', default=False)
-    parser.add_argument('--pretend',
-        help='display command lines but do not execute',
-        action='store_true')
     parser.add_argument('--delete-log',
         help='delete pass 1 log (otherwise keep with timestamp)',
         action='store_true')
-    parser.add_argument('-v', '--verbose',
-        help='verbose output',
-        action='store_true')
 
     # Timecode/segment arguments.    
-    sgroup = parser.add_argument_group('source segment arguments',
-        'A single segment or multiple segments of a source file may be encoded using the '
-        'following arguments.  The first three may be used independently or combined, while the '
-        'last not not be combined with the first three.  The same arguments will be applied to '
-        'all source files.  All argument values are in ffmpeg duration format; see ffmpeg '
-        'documentation for more details.')
-    sgroup.add_argument('--start',
-        help='starting source position',
-        action='store')
-    sgroup.add_argument('--duration',
-        help='duration to encode',
-        action='store')
-    sgroup.add_argument('--end',
-        help='ending source position',
-        action='store')
-    sgroup.add_argument('--segment',
-        help='segment start and end source position; my be specified multiple times to encode '
-             'multiple segments to separate files; enables --always-number when specified more '
-             'than once',
-        nargs=2, metavar=('START', 'END'), action='append', dest='segments')
+    add_timecode_arguments(parser)
 
     # Video/audio filter arguments.
     fgroup = parser.add_argument_group('video/audio filter arguments',
@@ -123,21 +93,8 @@ def main():
     if args.verbose >= 1:
         print (args)
 
-    # Check for invalid combinations.
-    if args.duration is not None and args.end is not None:
-        parser.error('--duration and --end may not be used together')
-    if args.start is not None or args.duration is not None or args.end is not None:
-        if args.segments is not None:
-            parser.error('--segments may not be used with other segment selectors')
-    if args.fade_out is not None:
-        if args.duration is None and args.end is None and args.segments is None:
-            parser.error('--fade-out requires --duration, --end, or --segment')
-            
-
-    # Check for valid files.
-    for source_file in args.source_files:
-        if not os.path.exists(source_file):
-            parser.error('invalid source file: ' + source_file)
+    check_timecode_arguments(parser, args)
+    check_source_files_exist(parser, args)
 
     ret = 0
     for source_file in args.source_files:
@@ -224,7 +181,6 @@ def get_log_command(args, file_name):
         return ['mv', 
                 '{0}-0.log'.format(title),
                 '{0}_{1:%Y%m%d-%H%M%S}.log'.format(title, datetime.now())]
-    
 
 # --------------------------------------------------------------------------------------------------
 def process_segment(args, segment, file_name):
