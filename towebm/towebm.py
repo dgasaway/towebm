@@ -24,6 +24,9 @@ from towebm.common import *
 
 # --------------------------------------------------------------------------------------------------
 def main():
+    """
+    Parses command line argument and initiates main operation.
+    """
     parser = ArgumentParser(
         description='Converts videos to webm format (vp9+opus) using a two-pass ffmpeg encode.',
         fromfile_prefix_chars="@")
@@ -108,6 +111,9 @@ def main():
 
 # --------------------------------------------------------------------------------------------------
 def get_pass1_command(args, segment, file_name):
+    """
+    Returns the arguments to run ffmpeg for pass one of a single output file.
+    """
     title = os.path.splitext(os.path.basename(file_name))[0]
 
     result = ['ffmpeg', '-nostdin', '-hide_banner']
@@ -139,6 +145,9 @@ def get_pass1_command(args, segment, file_name):
 
 # --------------------------------------------------------------------------------------------------
 def get_pass2_command(args, segment, file_name):
+    """
+    Returns the arguments to run ffmpeg for pass two of a single output file.
+    """
     title = os.path.splitext(os.path.basename(file_name))[0]
     
     result = ['ffmpeg', '-nostdin', '-hide_banner']
@@ -174,6 +183,10 @@ def get_pass2_command(args, segment, file_name):
 
 # --------------------------------------------------------------------------------------------------
 def get_log_command(args, file_name):
+    """
+    Returns the arguments to either delete or rename the pass one log file, as requested by the
+    user in the script arguemnts.
+    """
     title = os.path.splitext(os.path.basename(file_name))[0]
     if args.delete_log:
         return ['rm', '{0}-0.log'.format(title)]
@@ -184,6 +197,9 @@ def get_log_command(args, file_name):
 
 # --------------------------------------------------------------------------------------------------
 def process_segment(args, segment, file_name):
+    """
+    Executes the requested action for a single output file.
+    """
     if args.only_pass is None or args.only_pass == '1':
         pass1cmd = get_pass1_command(args, segment, file_name)
         if args.pretend or args.verbose >= 1:
@@ -204,6 +220,9 @@ def process_segment(args, segment, file_name):
     
 # --------------------------------------------------------------------------------------------------
 def process_file(args, file_name):
+    """
+    Executes the requested action for a single input file.
+    """
     if args.segments is not None:
         for segment in args.segments:
             process_segment(args, Segment(segment[0], segment[1], None), file_name)

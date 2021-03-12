@@ -110,6 +110,12 @@ def check_source_files_exist(parser, args):
 
 # --------------------------------------------------------------------------------------------------
 def get_safe_filename(filename, always_number):
+    """
+    Returns the source file name if no file exists with the given name and 'always_number' is false;
+    returns the source file name with an understore and two-digit sequence number appended to make
+    the file name unique if the source file name is not unique or 'always_number' is true; if no
+    such file name is unique, returns the source file name.
+    """
     if not always_number and not os.path.exists(filename):
         return filename
     else:
@@ -122,6 +128,10 @@ def get_safe_filename(filename, always_number):
 
 # --------------------------------------------------------------------------------------------------
 def duration_to_seconds(duration):
+    """
+    Converts an ffmpeg duration string into a decimal representing the number of seconds
+    represented by the duration string; None if the string is not parsable.
+    """
     pattern = r'^((((?P<hms_grp1>\d*):)?((?P<hms_grp2>\d*):)?((?P<hms_secs>\d+([.]\d*)?)))|' \
               '((?P<smu_value>\d+([.]\d*)?)(?P<smu_units>s|ms|us)))$'
     match = re.match(pattern, duration)
@@ -146,6 +156,10 @@ def duration_to_seconds(duration):
 
 # --------------------------------------------------------------------------------------------------
 def get_video_filters(args, segment):
+    """
+    Returns a list of ffmepg arguments starting with '-vf' with the video filters requested by the
+    user in the script arguments, or an empty list if none apply.
+    """
     filters = []
     
     # Want to apply standard filters is a certain order, so do not loop.
@@ -194,6 +208,10 @@ def get_video_filters(args, segment):
 
 # --------------------------------------------------------------------------------------------------
 def get_audio_filters(args, segment):
+    """
+    Returns a list of ffmepg arguments starting with '-af' with the audio filters requested by the
+    user in the script arguments, or an empty list if none apply.
+    """
     filters = []
     
     # Want to apply standard filters is a certain order, so do not loop.
@@ -221,6 +239,10 @@ def get_audio_filters(args, segment):
 
 # --------------------------------------------------------------------------------------------------
 def get_segment_arguments(segment):
+    """
+    Returns a list of ffmepg arguments to select a portion of the input as requested by the user in
+    the script arguments, or an empty list if none apply.
+    """
     result = []
     if segment.start is not None:
         result += ['-accurate_seek', '-ss', segment.start]

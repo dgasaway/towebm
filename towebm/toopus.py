@@ -23,6 +23,9 @@ from towebm.common import *
 
 # --------------------------------------------------------------------------------------------------
 def main():
+    """
+    Parses command line argument and initiates main operation.
+    """
     parser = ArgumentParser(
         description='Converts audio/video files to audio-only opus using ffmpeg.',
         fromfile_prefix_chars="@")
@@ -63,6 +66,9 @@ def main():
 
 # --------------------------------------------------------------------------------------------------
 def get_ffmpeg_command(args, segment, file_name):
+    """
+    Returns the arguments to run ffmpeg for a single output file.
+    """
     title = os.path.splitext(os.path.basename(file_name))[0]
     
     result = ['ffmpeg', '-nostdin', '-hide_banner']
@@ -83,6 +89,9 @@ def get_ffmpeg_command(args, segment, file_name):
 
 # --------------------------------------------------------------------------------------------------
 def process_segment(args, segment, file_name):
+    """
+    Executes the requested action for a single output file.
+    """
     cmd = get_ffmpeg_command(args, segment, file_name)
     if args.pretend or args.verbose >= 1:
         print(cmd)
@@ -91,6 +100,9 @@ def process_segment(args, segment, file_name):
     
 # --------------------------------------------------------------------------------------------------
 def process_file(args, file_name):
+    """
+    Executes the requested action for a single input file.
+    """
     if args.segments is not None:
         for segment in args.segments:
             process_segment(args, Segment(segment[0], segment[1], None), file_name)
