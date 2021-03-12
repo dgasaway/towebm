@@ -44,6 +44,9 @@ def main():
     parser.add_argument('--delete-log',
         help='delete pass 1 log (otherwise keep with timestamp)',
         action='store_true')
+    parser.add_argument('-C', '--container',
+        help='container format (default webm)',
+        action='store', choices=['webm', 'mkv'], default='webm')
 
     # Timecode/segment arguments.    
     add_timecode_arguments(parser)
@@ -176,7 +179,7 @@ def get_pass2_command(args, segment, file_name):
         '-passlogfile', title,
         '-cpu-used', '2',
         '-metadata', 'title={0}'.format(title),
-        get_safe_filename(title + '.webm', args.always_number)
+        get_safe_filename(title + '.' + args.container, args.always_number)
         ]
 
     return result
