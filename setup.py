@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 import os
 import io
 from towebm._version import __version__
@@ -11,25 +11,27 @@ with io.open(os.path.join(basedir, 'README.rst'), encoding='utf-8') as f:
 setup(
     name='towebm',
     version=__version__,
-    description='A Python 3 script to convert videos to webm format (vp9+opus) using ffmpeg',
+    description=
+        'Python 3 scripts which use ffmpeg to convert videos to webm format (vp9+opus) or to '
+        'convert audio to opus or vorbis.',
     long_description=long_description,
     long_description_content_type='text/x-rst',
     author='David Gasaway',
     author_email='dave@gasaway.org',
     url='https://github.com/dgasaway/towebm',
-    download_url='https://github.com/dgasaway/towebm/tags',
+    download_url='https://github.com/dgasaway/towebm/releases',
     license='GNU GPL v2',
-    py_modules=['towebm/towebm', 'towebm/_version'],
+    packages=find_packages(where='towebm'),
     entry_points={
         'console_scripts': [
             'towebm = towebm.towebm:main',
-            'tovorbis = towebm.tovorbis:main',
             'toopus = towebm.toopus:main',
+            'tovorbis = towebm.tovorbis:main',
             'ffcat = towebm.ffcat:main',
         ],
     },
     python_requires='>=3.2',
-    keywords='video converter ffmpeg vp9 opus webm',
+    keywords='video converter ffmpeg vp9 opus webm vorbis',
     classifiers=[
         'Operating System :: OS Independent',
         'Programming Language :: Python :: 3',
@@ -37,7 +39,8 @@ setup(
         'Programming Language :: Python :: 3 :: Only',
         'License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)',
         'Topic :: Multimedia :: Video :: Conversion',
-        'Development Status :: 4 - Beta',
+        'Topic :: Multimedia :: Sound/Audio :: Conversion',
+        'Development Status :: 5 - Production/Stable',
         'Environment :: Console',
         'Intended Audience :: End Users/Desktop',
     ],
