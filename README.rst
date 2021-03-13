@@ -110,7 +110,7 @@ unpack::
 
 Or get the latest source from the git repository::
 
-    $ git clone https://github.com/dgasaway/kantag.git
+    $ git clone https://github.com/dgasaway/towebm.git
 
 If you have access to install software in the system packages, then it can be
 installed as administrator::
