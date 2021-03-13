@@ -21,7 +21,7 @@ setup(
     url='https://github.com/dgasaway/towebm',
     download_url='https://github.com/dgasaway/towebm/releases',
     license='GNU GPL v2',
-    packages=find_packages(where='towebm'),
+    packages=find_packages(),
     entry_points={
         'console_scripts': [
             'towebm = towebm.towebm:main',
