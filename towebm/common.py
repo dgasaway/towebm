@@ -162,10 +162,15 @@ def get_video_filters(args, segment):
     """
     filters = []
     
+    # Deinterlace first.
+    if args.deinterlace is not None:
+        deint = "bwdif=send_" + args.deinterlace
+        if args.parity is not None:
+            deint += ":" + args.parity
+        filters += [deint]
+    
     # Want to apply standard filters is a certain order, so do not loop.
     if args.standard_filter is not None:
-        if 'deint' in args.standard_filter:
-            filters += ['yadif=parity=tff']
         if 'gray' in args.standard_filter:
             filters += ['format=gray']
         if 'crop43' in args.standard_filter:

@@ -53,16 +53,26 @@ def main():
 
     # Video/audio filter arguments.
     fgroup = parser.add_argument_group('video/audio filter arguments',
-        'Standard crop filters (e.g., "-s crop43") are applied before custom crop values '
-        '(e.g., "-x 10 10"); crop filters are applied before scale filters (e.g., "-s scale23"); '
-        'and all standard filters are applied before custom (i.e., "-f" and "-a") filters.')
+        'The deinterlate filter is applied first; standard crop filters (e.g., "-s crop43") are '
+        'applied before custom crop values (e.g., "-x 10 10"); crop filters are applied before '
+        'scale filters (e.g., "-s scale23");  and all standard filters are applied before custom '
+        '(i.e., "-f" and "-a") filters.')
     fgroup.add_argument('-s', '--standard-filter',
         help='standard video/audio filter; '
              '[crop43] crops horizontally to 4:3 aspect ratio; '
              '[scale23] scales down by 2/3 (e.g., 1080p to 720p); '
-             '[gray] converts to grayscale; '
-             '[deint] deinterlaces',
-        action='append', choices=['crop43', 'scale23', 'gray', 'deint'])
+             '[gray] converts to grayscale',
+        action='append', choices=['crop43', 'scale23', 'gray'])
+    fgroup.add_argument('-d', '--deinterlace',
+        help='deinterlate filter (bwdif); '
+             '[frame] output a frame from each pair of input fields; '
+             '[field] output an interpolated frame from each input field',
+        action='store', choices=['frame', 'field'])
+    fgroup.add_argument('--parity',
+        help='set a specific parity for the deinterlace filter; '
+             '[tff] top field first; '
+             '[bff] bottom field first',
+        action='store', choices=['tff', 'bff'])
     fgroup.add_argument('--fade-in',
         help='apply an audio and video fade-in at the start of each output',
         action='store', type=float, metavar='SECONDS')
