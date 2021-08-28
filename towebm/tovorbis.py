@@ -31,10 +31,11 @@ def main():
         fromfile_prefix_chars="@")
     add_basic_arguments(parser)
     parser.add_argument('-q', '--quality',
-        help='audio quality (default 6.0)',
-        action='store', type=float, default=6.0)
+        help='audio quality (default 6.0); may be specified multiple times to include additional '
+             'audio tracks from the source, with value 0 used to skip a track',
+        action='append', dest='audio_quality', metavar='QUALITY', type=float)
 
-    # Timecode/segment arguments.    
+    # Timecode/segment arguments.
     add_timecode_arguments(parser)
 
     # Filter arguments.
@@ -50,6 +51,10 @@ def main():
 
     if args.verbose >= 1:
         print (args)
+    if args.audio_quality is None:
+        args.audio_quality = 6.0
+    elif len([q for q in args.audio_quality if q > 0]) < 1:
+        parser.error('at least one positive audio quality must be specified')
 
     check_timecode_arguments(parser, args)
     check_source_files_exist(parser, args)
@@ -76,14 +81,12 @@ def get_ffmpeg_command(args, segment, file_name):
     result += [
         '-i', file_name,
         '-vn',
-        '-c:a', 'libvorbis',
-        '-aq', str(args.quality)
+        '-c:a', 'libvorbis'
         ]
-    result += get_audio_filters(args, segment)
-    result += [
-        #'-metadata:s:a:0', 'title={0}'.format(title),
-        get_safe_filename(title + '.ogg', args.always_number)
-        ]
+    result += get_audio_filter_args(args, segment)
+    result += get_audio_quality_args(args)
+    result += get_audio_metadata_map_args(args)
+    result += [get_safe_filename(title + '.ogg', args.always_number)]
 
     return result
 

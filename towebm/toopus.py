@@ -31,8 +31,9 @@ def main():
         fromfile_prefix_chars="@")
     add_basic_arguments(parser)
     parser.add_argument('-b', '--bitrate',
-        help='audio bitrate in kbps (default 160)',
-        action='store', type=int, default=160)
+        help='audio bitrate in kbps (default 160); may be specified multiple times to select a '
+             'source audio track, with value 0 used to skip a track',
+        action='append', dest='audio_quality', metavar='BITRATE', type=int)
 
     # Timecode/segment arguments.    
     add_timecode_arguments(parser)
@@ -47,6 +48,14 @@ def main():
 
     if args.segments is not None and len(args.segments) > 1:
         args.always_number = True
+    if args.audio_quality is None:
+        args.audio_quality = 160
+    else:
+        qcnt = len([q for q in args.audio_quality if q > 0])
+        if qcnt < 1:
+            parser.error('at least one positive audio bitrate must be specified')
+        elif qcnt > 1:
+            parser.error('only one non-zero audio bitrate may be specified')
 
     if args.verbose >= 1:
         print (args)
@@ -76,14 +85,12 @@ def get_ffmpeg_command(args, segment, file_name):
     result += [
         '-i', file_name,
         '-vn',
-        '-c:a', 'libopus',
-        '-b:a', '{0}k'.format(args.bitrate)
+        '-c:a', 'libopus'
         ]
-    result += get_audio_filters(args, segment)
-    result += [
-        #'-metadata:s:a:0', 'title={0}'.format(title),
-        get_safe_filename(title + '.opus', args.always_number)
-        ]
+    result += get_audio_filter_args(args, segment)
+    result += get_audio_quality_args(args)
+    result += get_audio_metadata_map_args(args)
+    result += [get_safe_filename(title + '.opus', args.always_number)]
 
     return result
 

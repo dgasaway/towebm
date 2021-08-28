@@ -20,6 +20,7 @@ import os
 import subprocess
 from datetime import datetime
 from argparse import ArgumentParser
+from collections.abc import Sequence
 from towebm.common import *
 
 # --------------------------------------------------------------------------------------------------
@@ -35,8 +36,9 @@ def main():
         help='video quality (lower is better, default 30)',
         action='store', type=int, default=30)
     parser.add_argument('-b', '--audio-bitrate',
-        help='audio bitrate in kbps (default 160)',
-        action='store', type=int, default=160)
+        help='audio bitrate in kbps (default 160); may be specified multiple times to include '
+             'additional audio tracks from the source, with value 0 used to skip a track',
+        action='append', dest='audio_quality', metavar='AUDIO_BITRATE', type=int)
     # Note: 'pass' is a keyword, so used name 'only_pass' internally.
     parser.add_argument('--pass',
         help='run only a given pass',
@@ -105,6 +107,10 @@ def main():
 
     if args.segments is not None and len(args.segments) > 1:
         args.always_number = True
+    if args.audio_quality is None:
+        args.audio_quality = 160
+    elif len([q for q in args.audio_quality if q > 0]) < 1:
+        parser.error('at least one positive audio bitrate must be specified')
 
     if args.verbose >= 1:
         print (args)
@@ -142,7 +148,7 @@ def get_pass1_command(args, segment, file_name):
         '-lag-in-frames', '25',
         '-pix_fmt', 'yuv420p'
         ]
-    result += get_video_filters(args, segment)
+    result += get_video_filter_args(args, segment)
     result += [
         '-an',
         '-f', 'webm',
@@ -155,6 +161,7 @@ def get_pass1_command(args, segment, file_name):
         ]
 
     return result
+
 
 # --------------------------------------------------------------------------------------------------
 def get_pass2_command(args, segment, file_name):
@@ -176,21 +183,20 @@ def get_pass2_command(args, segment, file_name):
         '-lag-in-frames', '25',
         '-pix_fmt', 'yuv420p'
         ]
-    result += get_video_filters(args, segment)
-    result += [
-        '-c:a', 'libopus',
-        '-b:a', '{0}k'.format(args.audio_bitrate)
-        ]
-    result += get_audio_filters(args, segment)
+    result += get_video_filter_args(args, segment)
+    result += ['-c:a', 'libopus']
+    result += get_audio_filter_args(args, segment)
+    result += get_audio_quality_args(args)
     result += [
         '-f', 'webm',
         '-threads', '8',
         '-pass', '2',
         '-passlogfile', title,
         '-cpu-used', '2',
-        '-metadata', 'title={0}'.format(title),
-        get_safe_filename(title + '.' + args.container, args.always_number)
+        '-metadata', 'title={0}'.format(title)
         ]
+    result += get_audio_metadata_map_args(args)
+    result += [get_safe_filename(title + '.' + args.container, args.always_number)]
 
     return result
 

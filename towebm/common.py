@@ -16,6 +16,7 @@
 import os
 import re
 from collections import namedtuple
+from collections.abc import Sequence
 from towebm._version import __version__
 
 Segment = namedtuple('Segment', 'start, end, duration')
@@ -57,7 +58,7 @@ def add_timecode_arguments(parser):
         help='ending source position',
         action='store')
     sgroup.add_argument('--segment',
-        help='segment start and end source position; my be specified multiple times to encode '
+        help='segment start and end source position; may be specified multiple times to encode '
              'multiple segments to separate files; enables --always-number when specified more '
              'than once',
         nargs=2, metavar=('START', 'END'), action='append', dest='segments')
@@ -155,11 +156,10 @@ def duration_to_seconds(duration):
         return None
 
 # --------------------------------------------------------------------------------------------------
-def get_video_filters(args, segment):
+def get_video_filter_args(args, segment):
     """
-    Returns a list of ffmpeg arguments that apply all of the selected video filters, including the
-    standard audio filters and user-provided, requested by the user in the script arguments,
-    or an empty list if none apply.
+    Returns a list of ffmpeg arguments that apply all of the selected video filters requested in the
+    script arguments, or an empty list if none apply.
     """
     filters = []
     
@@ -215,9 +215,7 @@ def get_video_filters(args, segment):
 # --------------------------------------------------------------------------------------------------
 def get_audio_filters(args, segment):
     """
-    Returns a list of ffmpeg arguments that apply all of the selected video filters, including the
-    standard audio filters and user-provided, requested by the user in the script arguments,
-    or an empty list if none apply.
+    Returns a lits of audio filters, one element per standard filter or user argument.
     """
     filters = []
     
@@ -242,7 +240,28 @@ def get_audio_filters(args, segment):
         for filter in args.audio_filter:
             filters += [filter]
 
-    return ['-filter_complex', '[0:a]' + ','.join(filters)] if len(filters) > 0 else []
+    return filters
+
+# --------------------------------------------------------------------------------------------------
+def get_audio_filter_args(args, segment):
+    """
+    Returns a list of ffmpeg arguments that apply all of the selected audio filters requested in the
+    script arguments, or an empty list if none apply.
+    """
+    labels = []
+    if isinstance(args.audio_quality, Sequence) and len(args.audio_quality) > 1:
+        # We need to specify the input index for each that audio stream that will be output.
+        for i, quality in enumerate(args.audio_quality):
+            if quality > 0:
+                labels += ['[0:a:{0}]'.format(i)]
+    
+    filters = get_audio_filters(args, segment)
+    if len(labels) == 0 and len(filters) == 0:
+        return []
+    else:
+        if len(labels) == 0: labels = ['[0:a]']
+        if len(filters) == 0: filters = ['acopy']
+        return ['-filter_complex', ';'.join([label + ','.join(filters) for label in labels])]
 
 # --------------------------------------------------------------------------------------------------
 def get_segment_arguments(segment):
@@ -259,3 +278,70 @@ def get_segment_arguments(segment):
         result += ['-t', segment.duration]
     return result
 
+# --------------------------------------------------------------------------------------------------
+def get_audio_quality_arg(quality, stream_index = None):
+    """
+    Returns a list two ffmpeg arguments for a given audio quality and optional output stream index.
+    """
+    result = []
+    if isinstance(quality, float):
+        if stream_index is None:
+            arg = '-q:a'
+        else:
+            arg = '-q:a:{0}'.format(stream_index)
+        return [arg, str(quality)]
+    else:
+        if stream_index is None:
+            arg = '-b:a'
+        else:
+            arg = '-b:a:{0}'.format(stream_index)
+        return [arg, '{0}k'.format(quality)]
+
+# --------------------------------------------------------------------------------------------------
+def get_audio_quality_args(args):
+    """
+    Returns a list of one or more sets of ffmpeg audio quality arguments based on the script audio
+    quality arguments.
+    """
+    if isinstance(args.audio_quality, Sequence):
+        if len(args.audio_quality) == 1:
+            return get_audio_quality_arg(args.audio_quality[0])
+        else:
+            # We only output a quality for non-zero values, and since the stream index is the
+            # output index, we can use the index of a filtered list.
+            result = []
+            for i, quality in enumerate([q for q in args.audio_quality if q > 0]):
+                result += get_audio_quality_arg(quality, i)
+            return result
+    else:
+        return get_audio_quality_arg(args.audio_quality)
+
+# --------------------------------------------------------------------------------------------------
+def get_audio_metadata_map_arg(output_index=0, input_index=None):
+    """
+    Returns a list two ffmpeg arguments for copying audio stream metadata from a source stream to an
+    output stream.
+    """
+    arg = '-map_metadata:s:a:{0}'.format(output_index)
+    if input_index is None:
+        return [arg, '0:s:a']
+    else:
+        return [arg, '0:s:a:{0}'.format(input_index)]
+
+# --------------------------------------------------------------------------------------------------
+def get_audio_metadata_map_args(args):
+    """
+    Returns a list of ffmpeg arguments to copy audio metadata from the input streams to the matching
+    output streams.
+    """
+    if isinstance(args.audio_quality, Sequence) and len(args.audio_quality) > 1:
+        # We need both the input and output index to create the map.
+        result = []
+        output_index = 0
+        for input_index, quality in enumerate(args.audio_quality):
+            if quality > 0:
+                result += get_audio_metadata_map_arg(output_index, input_index)
+                output_index += 1
+        return result
+    else:
+        return get_audio_metadata_map_arg()
