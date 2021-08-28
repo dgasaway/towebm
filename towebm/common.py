@@ -157,8 +157,9 @@ def duration_to_seconds(duration):
 # --------------------------------------------------------------------------------------------------
 def get_video_filters(args, segment):
     """
-    Returns a list of ffmepg arguments starting with '-vf' with the video filters requested by the
-    user in the script arguments, or an empty list if none apply.
+    Returns a list of ffmpeg arguments that apply all of the selected video filters, including the
+    standard audio filters and user-provided, requested by the user in the script arguments,
+    or an empty list if none apply.
     """
     filters = []
     
@@ -209,13 +210,14 @@ def get_video_filters(args, segment):
         for filter in args.filter:
             filters += [filter]
 
-    return ['-vf', ','.join(filters)] if len(filters) > 0 else []
+    return ['-filter_complex', '[0:v]' + ','.join(filters)] if len(filters) > 0 else []
 
 # --------------------------------------------------------------------------------------------------
 def get_audio_filters(args, segment):
     """
-    Returns a list of ffmepg arguments starting with '-af' with the audio filters requested by the
-    user in the script arguments, or an empty list if none apply.
+    Returns a list of ffmpeg arguments that apply all of the selected video filters, including the
+    standard audio filters and user-provided, requested by the user in the script arguments,
+    or an empty list if none apply.
     """
     filters = []
     
@@ -240,7 +242,7 @@ def get_audio_filters(args, segment):
         for filter in args.audio_filter:
             filters += [filter]
 
-    return ['-af', ','.join(filters)] if len(filters) > 0 else []
+    return ['-filter_complex', '[0:a]' + ','.join(filters)] if len(filters) > 0 else []
 
 # --------------------------------------------------------------------------------------------------
 def get_segment_arguments(segment):

@@ -89,10 +89,10 @@ def main():
         help='gramma correction (default 1.0; no correction)',
         action='store', type=float, default=1.0)
     fgroup.add_argument('-f', '--filter',
-        help='custom video filter, passed as -vf argument to ffmpeg',
+        help='custom video filter, similar to -vf ffmpeg argument',
         action='append')
     fgroup.add_argument('-a', '--audio-filter',
-        help='custom audio filter, passed as -af argument to ffmpeg',
+        help='custom audio filter, similar to -af ffmpeg argument',
         action='append')
     fgroup.add_argument('--volume', 
         help='amplitude (volume) multiplier, < 1.0 to reduce volume, or > 1.0 to increase volume',
