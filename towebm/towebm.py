@@ -30,6 +30,7 @@ def main():
     """
     parser = ArgumentParser(
         description='Converts videos to webm format (vp9+opus) using a two-pass ffmpeg encode.',
+        formatter_class=MultilineFormatter,
         fromfile_prefix_chars="@")
     add_basic_arguments(parser)
     parser.add_argument('-q', '--quality',
@@ -102,11 +103,15 @@ def main():
         help='amplitude (volume) multiplier, < 1.0 to reduce volume, or > 1.0 to increase volume',
         action='store', type=float, default=1.0)
 
+    # Want this as the last group.
+    add_passthrough_arguments(parser)
+
     parser.add_argument('source_files',
         help='source video files to convert',
         action='store', metavar='source_file', nargs='+')
-    args = parser.parse_args()
-
+    
+    # Parse the arguments and do extra argument checks.
+    args = parse_args(parser)
     if args.segments is not None and len(args.segments) > 1:
         args.always_number = True
     if args.audio_quality is None:
@@ -161,9 +166,9 @@ def get_pass1_command(args, segment, file_name):
         '-y',
         '/dev/null'
         ]
+    result += args.passthrough_args
 
     return result
-
 
 # --------------------------------------------------------------------------------------------------
 def get_pass2_command(args, segment, file_name):
@@ -198,6 +203,7 @@ def get_pass2_command(args, segment, file_name):
         '-metadata', 'title={0}'.format(title)
         ]
     result += get_audio_metadata_map_args(args)
+    result += args.passthrough_args
     result += [get_safe_filename(title + '.' + args.container, args.always_number)]
 
     return result

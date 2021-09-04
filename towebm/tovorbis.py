@@ -28,6 +28,7 @@ def main():
     """
     parser = ArgumentParser(
         description='Converts audio/video files to audio-only vorbis using ffmpeg.',
+        formatter_class=MultilineFormatter,
         fromfile_prefix_chars="@")
     add_basic_arguments(parser)
     parser.add_argument('-q', '--quality',
@@ -41,11 +42,15 @@ def main():
     # Filter arguments.
     add_audio_filter_arguments(parser)
 
+    # Want this as the last group.
+    add_passthrough_arguments(parser)
+
     parser.add_argument('source_files',
         help='source video files to convert',
         action='store', metavar='source_file', nargs='+')
-    args = parser.parse_args()
 
+    # Parse the arguments and do extra argument checks.
+    args = parse_args(parser)
     if args.segments is not None and len(args.segments) > 1:
         args.always_number = True
 
@@ -59,6 +64,7 @@ def main():
     check_timecode_arguments(parser, args)
     check_source_files_exist(parser, args)
 
+    # We'll treat each input file as it's own job, and continue to the next if there is a problem.
     ret = 0
     for source_file in args.source_files:
         try:
@@ -86,6 +92,7 @@ def get_ffmpeg_command(args, segment, file_name):
     result += get_audio_filter_args(args, segment)
     result += get_audio_quality_args(args)
     result += get_audio_metadata_map_args(args)
+    result += args.passthrough_args
     result += [get_safe_filename(title + '.ogg', args.always_number)]
 
     return result

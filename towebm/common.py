@@ -15,11 +15,29 @@
 
 import os
 import re
+import sys
+import argparse
 from collections import namedtuple
 from collections.abc import Sequence
+import textwrap
 from towebm._version import __version__
 
 Segment = namedtuple('Segment', 'start, end, duration')
+
+# --------------------------------------------------------------------------------------------------
+class MultilineFormatter(argparse.HelpFormatter):
+    """
+    An argparse help formatter that supports using the token '|n ' to introduce newlines.
+    """
+    def _fill_text(self, text, width, indent):
+        text = self._whitespace_matcher.sub(' ', text).strip()
+        paragraphs = text.split('|n ')
+        multiline_text = ''
+        for paragraph in paragraphs:
+            formatted_paragraph = textwrap.fill(
+                paragraph, width, initial_indent=indent, subsequent_indent=indent) + '\n\n'
+            multiline_text = multiline_text + formatted_paragraph
+        return multiline_text
 
 # --------------------------------------------------------------------------------------------------
 def add_basic_arguments(parser):
@@ -35,7 +53,7 @@ def add_basic_arguments(parser):
         action='store_true')
     parser.add_argument('-v', '--verbose',
         help='verbose output',
-        action='store_true')
+        action='count', default=0)
 
 # --------------------------------------------------------------------------------------------------
 def add_timecode_arguments(parser):
@@ -83,6 +101,17 @@ def add_audio_filter_arguments(parser):
         help='amplitude (volume) multiplier, < 1.0 to reduce volume, or > 1.0 to increase volume; '
              'recommended to use replaygain to tag the file post-conversion, instead',
         action='store', type=float, default=1.0)
+
+# --------------------------------------------------------------------------------------------------
+def add_passthrough_arguments(parser):
+    """
+    Adds passthrough argument help to a parser.
+    """
+    group = parser.add_argument_group('passthrough arguments',
+        'Additional arguments can be passed to ffmpeg as-is before the output file name by adding '
+        'an ''--'' argument followed by the ffmpeg arguments.  Note, because these preceed the '
+        'output file name, they are only useful for output arguments.|n |n '
+        '-- [arg [arg ...]]')
 
 # --------------------------------------------------------------------------------------------------
 def check_timecode_arguments(parser, args):
@@ -351,3 +380,19 @@ def get_audio_metadata_map_args(args):
         return result
     else:
         return get_audio_metadata_map_arg()
+
+# --------------------------------------------------------------------------------------------------
+def parse_args(parser):
+    """
+    Parses the command arguments; anything after a '--' argument is taken as a passthrough argument,
+    while anything before is parsed using the given argparse parser.  The passthrough arguments are
+    added to the result args as 'passthrough_args'.
+    """
+    argv = sys.argv[1:]
+    idx = argv.index("--") if "--" in argv else -1
+    pargs = argv[idx + 1:] if idx >= 0 else []
+    argv = argv[:idx] if idx >= 0 else argv
+    args = parser.parse_args(argv)
+    args.passthrough_args = pargs
+    return args
+    
