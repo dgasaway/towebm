@@ -29,7 +29,7 @@ def main():
     parser = ArgumentParser(
         description='Converts audio/video files to audio-only opus using ffmpeg.',
         formatter_class=MultilineFormatter,
-        fromfile_prefix_chars="@")
+        fromfile_prefix_chars='@')
     add_basic_arguments(parser)
     parser.add_argument('-b', '--bitrate',
         help='audio bitrate in kbps (default 160); may be specified multiple times to select a '

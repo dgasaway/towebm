@@ -31,7 +31,7 @@ def main():
     parser = ArgumentParser(
         description='Converts videos to webm format (vp9+opus) using a two-pass ffmpeg encode.',
         formatter_class=MultilineFormatter,
-        fromfile_prefix_chars="@")
+        fromfile_prefix_chars='@')
     add_basic_arguments(parser)
     parser.add_argument('-q', '--quality',
         help='video quality (lower is better, default 30)',
@@ -125,6 +125,7 @@ def main():
     check_timecode_arguments(parser, args)
     check_source_files_exist(parser, args)
 
+    # We'll treat each input file as it's own job, and continue to the next if there is a problem.
     ret = 0
     for source_file in args.source_files:
         try:

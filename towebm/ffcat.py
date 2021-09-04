@@ -26,7 +26,7 @@ from tempfile import NamedTemporaryFile
 def main():
     parser = ArgumentParser(
         description='Concatenates media files using the ffmpeg concat demuxer.',
-        fromfile_prefix_chars="@")
+        fromfile_prefix_chars='@')
     parser.add_argument('--version', action='version', version='%(prog)s ' + __version__)
     parser.add_argument('-v', '--verbose',
         help='verbose output',

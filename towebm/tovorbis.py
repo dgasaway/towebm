@@ -29,7 +29,7 @@ def main():
     parser = ArgumentParser(
         description='Converts audio/video files to audio-only vorbis using ffmpeg.',
         formatter_class=MultilineFormatter,
-        fromfile_prefix_chars="@")
+        fromfile_prefix_chars='@')
     add_basic_arguments(parser)
     parser.add_argument('-q', '--quality',
         help='audio quality (default 6.0); may be specified multiple times to include additional '

@@ -389,7 +389,7 @@ def parse_args(parser):
     added to the result args as 'passthrough_args'.
     """
     argv = sys.argv[1:]
-    idx = argv.index("--") if "--" in argv else -1
+    idx = argv.index('--') if '--' in argv else -1
     pargs = argv[idx + 1:] if idx >= 0 else []
     argv = argv[:idx] if idx >= 0 else argv
     args = parser.parse_args(argv)
