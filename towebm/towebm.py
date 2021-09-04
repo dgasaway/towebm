@@ -66,10 +66,12 @@ def main():
              '[gray] converts to grayscale',
         action='append', choices=['crop43', 'scale23', 'gray'])
     fgroup.add_argument('-d', '--deinterlace',
-        help='deinterlate filter (bwdif); '
+        help='deinterlate filter; '
              '[frame] output a frame from each pair of input fields; '
-             '[field] output an interpolated frame from each input field',
-        action='store', choices=['frame', 'field'])
+             '[field] output an interpolated frame from each input field; '
+             '[ivtc] inverse telecine; '
+             '[ivtc+] inverse telecine with fallback deinterlace',
+        action='store', choices=['frame', 'field', 'ivtc', 'ivtc+'])
     fgroup.add_argument('--parity',
         help='set a specific parity for the deinterlace filter; '
              '[tff] top field first; '

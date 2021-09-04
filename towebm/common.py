@@ -164,11 +164,17 @@ def get_video_filter_args(args, segment):
     filters = []
     
     # Deinterlace first.
-    if args.deinterlace is not None:
-        deint = "bwdif=send_" + args.deinterlace
-        if args.parity is not None:
-            deint += ":" + args.parity
-        filters += [deint]
+    parity = ''
+    if args.parity is not None:
+        parity = ':' + args.parity
+    if args.deinterlace == 'frame':
+        filters += ['bwdif=send_frame' + parity]
+    elif args.deinterlace == 'field':
+        filters += ['bwdif=send_field' + parity]
+    elif args.deinterlace == 'ivtc':
+        filters += ['fieldmatch', 'decimate']
+    elif args.deinterlace == 'ivtc+':
+        filters += ['fieldmatch', 'bwdif=send_frame', 'decimate']
     
     # Want to apply standard filters is a certain order, so do not loop.
     if args.standard_filter is not None:
