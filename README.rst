@@ -4,7 +4,7 @@ Introduction
 ``towebm`` is a Python 3 script to transcode video files to a webm container
 with VP9 format video and Opus format audio using the ``ffmpeg`` tool.
 Arguments are available for basic edit operations - crop, scale, cut, 
-grayscale, and deinterlate - as well as for passing arbitrary ffmpeg video
+grayscale, and deinterlace - as well as for passing arbitrary ffmpeg video
 or audio filters.  ``toopus`` and ``tovorbis`` will transcode audio from
 video or audio files to Opus and Vorbis format files, respectively, with
 many of the same features as ``towebm``.  Finally, ``ffcat`` will
@@ -67,7 +67,7 @@ fade-out::
 Same as the previous example, but producing an output file with only opus
 audio::
 
-    towebm input.mp4 --start 1:00 --end 2:00 --fade-in 1 --fade-out 0.5
+    toopus input.mp4 --start 1:00 --end 2:00 --fade-in 1 --fade-out 0.5
 
 Transcode a portion of a FLAC audio file to vorbis, quality 4::
 
