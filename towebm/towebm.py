@@ -164,10 +164,10 @@ def get_pass1_command(args, segment, file_name):
         '-pass', '1',
         '-passlogfile', title,
         '-cpu-used', '4',
-        '-y',
-        '/dev/null'
+        '-y'
         ]
     result += args.passthrough_args
+    result += ['/dev/null']
 
     return result
 
