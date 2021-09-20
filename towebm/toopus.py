@@ -36,6 +36,11 @@ def main():
              'multiple source audio tracks, with value 0 or blank used to skip a track',
         action=DelimitedValueAction, dest='audio_quality', metavar='BITRATE', value_type=int,
         default=[160])
+    parser.add_argument('--channel-layout-fix',
+        help='1 to apply a 5.1 channel layout fix (necessary for 5.1 with side channels), or 0 to '
+        'apply no fix; may be a colon-delimited list to select from multiple source audio tracks, '
+        'with value 0 or blank used to skip a track',
+        action=DelimitedValueAction, metavar='FIX_STRING', value_type=int, default=[0])
 
     # Timecode/segment arguments.
     add_timecode_arguments(parser)

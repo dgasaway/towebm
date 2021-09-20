@@ -41,6 +41,11 @@ def main():
              'additional audio tracks from the source, with value 0 or blank used to skip a track',
         action=DelimitedValueAction, dest='audio_quality', metavar='AUDIO_BITRATE', value_type=int,
         default=[160])
+    parser.add_argument('--channel-layout-fix',
+        help='1 to apply a 5.1 channel layout fix (necessary for 5.1 with side channels), or 0 to '
+        'apply no fix; may be a colon-delimited list to apply the fix to multiple audio tracks '
+        'from the source',
+        action=DelimitedValueAction, metavar='FIX_STRING', value_type=int, default=[0])
     # Note: 'pass' is a keyword, so used name 'only_pass' internally.
     parser.add_argument('--pass',
         help='run only a given pass',

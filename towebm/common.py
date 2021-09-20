@@ -310,20 +310,32 @@ def get_audio_filter_args(args, segment):
     Returns a list of ffmpeg arguments that apply all of the selected audio filters requested in the
     script arguments, or an empty list if none apply.
     """
-    labels = []
-    if isinstance(args.audio_quality, Sequence) and len(args.audio_quality) > 1:
-        # We need to specify the input index for each that audio stream that will be output.
-        for i, quality in enumerate(args.audio_quality):
-            if quality != None and quality > 0:
-                labels += ['[0:a:{0}]'.format(i)]
-    
     filters = get_audio_filters(args, segment)
-    if len(labels) == 0 and len(filters) == 0:
+    per_track_filters = []
+
+    # We need to specify the input index for each that audio stream that will be output.  So, we
+    # iterate the list with index, rather than use list comprehension.
+    for i, quality in enumerate(args.audio_quality):
+        if quality != None and quality > 0:
+            # channel_layout_fix is going to use the same index, but it may have fewer values
+            # specified than audio_quality.
+            map_fix = (
+                hasattr(args, 'channel_layout_fix') and
+                i < len(args.channel_layout_fix) and
+                args.channel_layout_fix[i] != None and
+                args.channel_layout_fix[i] > 0)
+            if map_fix:
+                flts = ['channelmap=channel_layout=5.1'] + filters
+            elif len(filters) == 0:
+                flts = ['acopy']
+            else:
+                flts = filters
+            per_track_filters.append('[0:a:{0}]'.format(i) + ','.join(flts))
+
+    if len(per_track_filters) == 0:
         return []
     else:
-        if len(labels) == 0: labels = ['[0:a]']
-        if len(filters) == 0: filters = ['acopy']
-        return ['-filter_complex', ';'.join([label + ','.join(filters) for label in labels])]
+        return ['-filter_complex', ';'.join(per_track_filters)]
 
 # --------------------------------------------------------------------------------------------------
 def get_segment_arguments(segment):
