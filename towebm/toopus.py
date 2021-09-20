@@ -32,11 +32,12 @@ def main():
         fromfile_prefix_chars='@')
     add_basic_arguments(parser)
     parser.add_argument('-b', '--bitrate',
-        help='audio bitrate in kbps (default 160); may be specified multiple times to select a '
-             'source audio track, with value 0 used to skip a track',
-        action='append', dest='audio_quality', metavar='BITRATE', type=int)
+        help='audio bitrate in kbps (default 160); may be a colon-delimited list to select from '
+             'multiple source audio tracks, with value 0 or blank used to skip a track',
+        action=DelimitedValueAction, dest='audio_quality', metavar='BITRATE', value_type=int,
+        default=[160])
 
-    # Timecode/segment arguments.    
+    # Timecode/segment arguments.
     add_timecode_arguments(parser)
 
     # Filter arguments.
@@ -53,14 +54,11 @@ def main():
     args = parse_args(parser)
     if args.segments is not None and len(args.segments) > 1:
         args.always_number = True
-    if args.audio_quality is None:
-        args.audio_quality = 160
-    else:
-        qcnt = len([q for q in args.audio_quality if q > 0])
-        if qcnt < 1:
-            parser.error('at least one positive audio bitrate must be specified')
-        elif qcnt > 1:
-            parser.error('only one non-zero audio bitrate may be specified')
+    qcnt = len([q for q in args.audio_quality if q != None and q > 0])
+    if qcnt < 1:
+        parser.error('at least one positive audio bitrate must be specified')
+    elif qcnt > 1:
+        parser.error('only one non-zero audio bitrate may be specified')
 
     if args.verbose >= 1:
         print (args)

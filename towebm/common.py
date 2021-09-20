@@ -40,6 +40,33 @@ class MultilineFormatter(argparse.HelpFormatter):
         return multiline_text
 
 # --------------------------------------------------------------------------------------------------
+class DelimitedValueAction(argparse.Action):
+    """
+    An argparse action that splits a list of colon-deparated values into a sequence.
+    """
+    def __init__(self, option_strings, dest, value_type=str, delimiter=':', nargs=None, type=None,
+        **kwargs):
+        if nargs is not None:
+            raise ValueError("nargs not allowed")
+        if type is not None:
+            raise ValueError("use value_type")
+        self._value_type = value_type
+        self._delimiter = delimiter
+        
+        super().__init__(option_strings, dest, type=type, **kwargs)
+
+    def __call__(self, parser, ns, values, option_string=None):
+        try:
+            result = [None if s == '' else self._value_type(s)
+                for s in values.split(self._delimiter)]
+            print(result)
+        except:
+            raise argparse.ArgumentError(self,
+                "must be a list of {} values delimited by '{}'".format(
+                self._value_type.__name__, self._delimiter))
+        setattr(ns, self.dest, result)
+
+# --------------------------------------------------------------------------------------------------
 def add_basic_arguments(parser):
     """
     Adds basic arguments that apply to all scripts to a parser.
@@ -287,7 +314,7 @@ def get_audio_filter_args(args, segment):
     if isinstance(args.audio_quality, Sequence) and len(args.audio_quality) > 1:
         # We need to specify the input index for each that audio stream that will be output.
         for i, quality in enumerate(args.audio_quality):
-            if quality > 0:
+            if quality != None and quality > 0:
                 labels += ['[0:a:{0}]'.format(i)]
     
     filters = get_audio_filters(args, segment)
@@ -338,18 +365,12 @@ def get_audio_quality_args(args):
     Returns a list of one or more sets of ffmpeg audio quality arguments based on the script audio
     quality arguments.
     """
-    if isinstance(args.audio_quality, Sequence):
-        if len(args.audio_quality) == 1:
-            return get_audio_quality_arg(args.audio_quality[0])
-        else:
-            # We only output a quality for non-zero values, and since the stream index is the
-            # output index, we can use the index of a filtered list.
-            result = []
-            for i, quality in enumerate([q for q in args.audio_quality if q > 0]):
-                result += get_audio_quality_arg(quality, i)
-            return result
-    else:
-        return get_audio_quality_arg(args.audio_quality)
+    # We only output a quality for non-zero values, and since the stream index is the output index,
+    # we can use the index of a filtered list.
+    result = []
+    for i, quality in enumerate([q for q in args.audio_quality if q != None and q > 0]):
+        result += get_audio_quality_arg(quality, i)
+    return result
 
 # --------------------------------------------------------------------------------------------------
 def get_audio_metadata_map_arg(output_index=0, input_index=None):
@@ -374,7 +395,7 @@ def get_audio_metadata_map_args(args):
         result = []
         output_index = 0
         for input_index, quality in enumerate(args.audio_quality):
-            if quality > 0:
+            if quality != None and quality > 0:
                 result += get_audio_metadata_map_arg(output_index, input_index)
                 output_index += 1
         return result

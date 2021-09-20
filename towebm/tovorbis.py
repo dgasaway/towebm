@@ -32,9 +32,10 @@ def main():
         fromfile_prefix_chars='@')
     add_basic_arguments(parser)
     parser.add_argument('-q', '--quality',
-        help='audio quality (default 6.0); may be specified multiple times to include additional '
-             'audio tracks from the source, with value 0 used to skip a track',
-        action='append', dest='audio_quality', metavar='QUALITY', type=float)
+        help='audio quality (default 6.0); may be a colon-delimieted list to include additional '
+             'audio tracks from the source, with value 0 or blank used to skip a track',
+        action=DelimitedValueAction, dest='audio_quality', metavar='QUALITY', value_type=float,
+        default=[6.0])
 
     # Timecode/segment arguments.
     add_timecode_arguments(parser)
@@ -56,9 +57,7 @@ def main():
 
     if args.verbose >= 1:
         print (args)
-    if args.audio_quality is None:
-        args.audio_quality = 6.0
-    elif len([q for q in args.audio_quality if q > 0]) < 1:
+    if len([q for q in args.audio_quality if q != None and q > 0]) < 1:
         parser.error('at least one positive audio quality must be specified')
 
     check_timecode_arguments(parser, args)

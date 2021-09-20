@@ -37,9 +37,10 @@ def main():
         help='video quality (lower is better, default 30)',
         action='store', type=int, default=30)
     parser.add_argument('-b', '--audio-bitrate',
-        help='audio bitrate in kbps (default 160); may be specified multiple times to include '
-             'additional audio tracks from the source, with value 0 used to skip a track',
-        action='append', dest='audio_quality', metavar='AUDIO_BITRATE', type=int)
+        help='audio bitrate in kbps (default 160); may be a colon-delimited list to include '
+             'additional audio tracks from the source, with value 0 or blank used to skip a track',
+        action=DelimitedValueAction, dest='audio_quality', metavar='AUDIO_BITRATE', value_type=int,
+        default=[160])
     # Note: 'pass' is a keyword, so used name 'only_pass' internally.
     parser.add_argument('--pass',
         help='run only a given pass',
@@ -51,7 +52,7 @@ def main():
         help='container format (default webm)',
         action='store', choices=['webm', 'mkv'], default='webm')
 
-    # Timecode/segment arguments.    
+    # Timecode/segment arguments.
     add_timecode_arguments(parser)
 
     # Video/audio filter arguments.
@@ -114,9 +115,7 @@ def main():
     args = parse_args(parser)
     if args.segments is not None and len(args.segments) > 1:
         args.always_number = True
-    if args.audio_quality is None:
-        args.audio_quality = 160
-    elif len([q for q in args.audio_quality if q > 0]) < 1:
+    if len([q for q in args.audio_quality if q != None and q > 0]) < 1:
         parser.error('at least one positive audio bitrate must be specified')
 
     if args.verbose >= 1:
