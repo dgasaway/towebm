@@ -316,13 +316,13 @@ def get_audio_filter_args(args, segment):
     # We need to specify the input index for each that audio stream that will be output.  So, we
     # iterate the list with index, rather than use list comprehension.
     for i, quality in enumerate(args.audio_quality):
-        if quality != None and quality > 0:
+        if quality is not None and quality > 0:
             # channel_layout_fix is going to use the same index, but it may have fewer values
             # specified than audio_quality.
             map_fix = (
                 hasattr(args, 'channel_layout_fix') and
                 i < len(args.channel_layout_fix) and
-                args.channel_layout_fix[i] != None and
+                args.channel_layout_fix[i] is not None and
                 args.channel_layout_fix[i] > 0)
             if map_fix:
                 flts = ['channelmap=channel_layout=5.1'] + filters
@@ -380,7 +380,7 @@ def get_audio_quality_args(args):
     # We only output a quality for non-zero values, and since the stream index is the output index,
     # we can use the index of a filtered list.
     result = []
-    for i, quality in enumerate([q for q in args.audio_quality if q != None and q > 0]):
+    for i, quality in enumerate([q for q in args.audio_quality if q is not None and q > 0]):
         result += get_audio_quality_arg(quality, i)
     return result
 
@@ -407,7 +407,7 @@ def get_audio_metadata_map_args(args):
         result = []
         output_index = 0
         for input_index, quality in enumerate(args.audio_quality):
-            if quality != None and quality > 0:
+            if quality is not None and quality > 0:
                 result += get_audio_metadata_map_arg(output_index, input_index)
                 output_index += 1
         return result

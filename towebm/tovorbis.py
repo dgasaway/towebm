@@ -57,7 +57,7 @@ def main():
 
     if args.verbose >= 1:
         print (args)
-    if len([q for q in args.audio_quality if q != None and q > 0]) < 1:
+    if len([q for q in args.audio_quality if q is not None and q > 0]) < 1:
         parser.error('at least one positive audio quality must be specified')
 
     check_timecode_arguments(parser, args)

@@ -59,7 +59,7 @@ def main():
     args = parse_args(parser)
     if args.segments is not None and len(args.segments) > 1:
         args.always_number = True
-    qcnt = len([q for q in args.audio_quality if q != None and q > 0])
+    qcnt = len([q for q in args.audio_quality if q is not None and q > 0])
     if qcnt < 1:
         parser.error('at least one positive audio bitrate must be specified')
     elif qcnt > 1:
