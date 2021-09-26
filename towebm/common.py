@@ -267,12 +267,15 @@ def get_video_filter_args(args, segment):
             start = 0.0 if segment.start is None else duration_to_seconds(segment.start)
             duration = duration_to_seconds(segment.end) - start
         filters += ['fade=t=out:st={0}:d={1}'.format(duration - args.fade_out, args.fade_out)]
-        
+
     if args.filter is not None:
         for filter in args.filter:
             filters += [filter]
 
-    return ['-filter_complex', '[0:v]' + ','.join(filters)] if len(filters) > 0 else []
+    if len(filters) == 0:
+        filters = ['copy']
+
+    return ['-filter_complex', '[0:v]' + ','.join(filters)]
 
 # --------------------------------------------------------------------------------------------------
 def get_audio_filters(args, segment):
