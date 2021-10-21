@@ -59,7 +59,6 @@ class DelimitedValueAction(argparse.Action):
         try:
             result = [None if s == '' else self._value_type(s)
                 for s in values.split(self._delimiter)]
-            print(result)
         except:
             raise argparse.ArgumentError(self,
                 "must be a list of {} values delimited by '{}'".format(
