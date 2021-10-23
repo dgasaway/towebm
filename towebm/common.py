@@ -404,7 +404,7 @@ def get_audio_metadata_map_args(args):
     Returns a list of ffmpeg arguments to copy audio metadata from the input streams to the matching
     output streams.
     """
-    if isinstance(args.audio_quality, Sequence) and len(args.audio_quality) > 1:
+    if isinstance(args.audio_quality, Sequence):
         # We need both the input and output index to create the map.
         result = []
         output_index = 0
@@ -413,7 +413,7 @@ def get_audio_metadata_map_args(args):
                 result += get_audio_metadata_map_arg(output_index, input_index)
                 output_index += 1
         return result
-    else:
+    elif args.audio_quality > 0:
         return get_audio_metadata_map_arg()
 
 # --------------------------------------------------------------------------------------------------
