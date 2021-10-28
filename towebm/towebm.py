@@ -194,7 +194,10 @@ def get_pass2_command(args, segment, file_name):
         '-pix_fmt', 'yuv420p'
         ]
     result += get_video_filter_args(args, segment)
-    result += ['-c:a', 'libopus']
+    if len([q for q in args.audio_quality if q is not None and q > 0]) > 0:
+        result += ['-c:a', 'libopus']
+    else:
+        result += ['-an']
     result += get_audio_filter_args(args, segment)
     result += get_audio_quality_args(args)
     result += [
