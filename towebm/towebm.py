@@ -42,10 +42,11 @@ def main():
         action=DelimitedValueAction, dest='audio_quality', metavar='AUDIO_BITRATE', value_type=int,
         default=[160])
     parser.add_argument('--channel-layout-fix',
-        help='1 to apply a 5.1 channel layout fix (necessary for 5.1 with side channels), or 0 to '
-        'apply no fix; may be a colon-delimited list to apply the fix to multiple audio tracks '
-        'from the source',
-        action=DelimitedValueAction, metavar='FIX_STRING', value_type=int, default=[0])
+        help='apply a channel layout fix to 4.1, 5.0, 5.1(side) audio sources to output a '
+             'compatible 5.1(rear) layout; may be a colon-delimited list to apply the fix to '
+             'multiple audio tracks from the source; use 0 or blank to apply no fix',
+        action=DelimitedValueAction, metavar="FIX_STRING",
+        value_choices=['0', '4.1', '5.0', '5.1'], default=['0'])
     # Note: 'pass' is a keyword, so used name 'only_pass' internally.
     parser.add_argument('--pass',
         help='run only a given pass',
@@ -77,8 +78,9 @@ def main():
              '[frame] output a frame from each pair of input fields; '
              '[field] output an interpolated frame from each input field; '
              '[ivtc] inverse telecine; '
-             '[ivtc+] inverse telecine with fallback deinterlace',
-        action='store', choices=['frame', 'field', 'ivtc', 'ivtc+'])
+             '[ivtc+] inverse telecine with fallback deinterlace; '
+             '[selframe] selectively deinterlace frames ',
+        action='store', choices=['frame', 'field', 'ivtc', 'ivtc+', 'selframe'])
     fgroup.add_argument('--parity',
         help='set a specific parity for the deinterlace filter; '
              '[tff] top field first; '

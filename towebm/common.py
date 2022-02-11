@@ -44,14 +44,17 @@ class DelimitedValueAction(argparse.Action):
     """
     An argparse action that splits a list of colon-deparated values into a sequence.
     """
-    def __init__(self, option_strings, dest, value_type=str, delimiter=':', nargs=None, type=None,
-        **kwargs):
+    def __init__(self, option_strings, dest, value_type=str, delimiter=':', value_choices=None,
+        nargs=None, type=None, choices=None, **kwargs):
         if nargs is not None:
-            raise ValueError("nargs not allowed")
+            raise ValueError('nargs not allowed')
         if type is not None:
-            raise ValueError("use value_type")
+            raise ValueError('use value_type')
+        if choices is not None:
+            raise ValueError('use value_choices')
         self._value_type = value_type
         self._delimiter = delimiter
+        self._value_choices = value_choices
         
         super().__init__(option_strings, dest, type=type, **kwargs)
 
@@ -63,6 +66,14 @@ class DelimitedValueAction(argparse.Action):
             raise argparse.ArgumentError(self,
                 "must be a list of {} values delimited by '{}'".format(
                 self._value_type.__name__, self._delimiter))
+
+        if result is not None and self._value_choices is not None:
+            for bad_choice in [choice for choice in result
+                if choice is not None and choice not in self._value_choices]:
+                raise argparse.ArgumentError(self,
+                    "invalid choice: '{}' (choose from {})".format(
+                        bad_choice, self._value_choices
+                    ))
         setattr(ns, self.dest, result)
 
 # --------------------------------------------------------------------------------------------------
@@ -230,6 +241,8 @@ def get_video_filter_args(args, segment):
         filters += ['fieldmatch', 'decimate']
     elif args.deinterlace == 'ivtc+':
         filters += ['fieldmatch', 'bwdif=send_frame', 'decimate']
+    elif args.deinterlace == 'selframe':
+        filters += ['fieldmatch', 'bwdif=0:-1:1']
     
     # Want to apply standard filters is a certain order, so do not loop.
     if args.standard_filter is not None:
@@ -325,9 +338,13 @@ def get_audio_filter_args(args, segment):
                 hasattr(args, 'channel_layout_fix') and
                 i < len(args.channel_layout_fix) and
                 args.channel_layout_fix[i] is not None and
-                args.channel_layout_fix[i] > 0)
-            if map_fix:
+                args.channel_layout_fix[i] != '0')
+            if map_fix and (args.channel_layout_fix[i] == '5.1'):
                 flts = ['channelmap=channel_layout=5.1'] + filters
+            elif map_fix and args.channel_layout_fix[i] == '5.0':
+                flts = ['pan=5.1|FR=FR|FL=FL|FC=FC|BL=SL|BR=SR'] + filters
+            elif map_fix and args.channel_layout_fix[i] == '4.1':
+                flts = ['pan=5.1|FR=FR|FL=FL|FC=FC|BL=BC|BR=BC|LFE=LFE'] + filters
             elif len(filters) == 0:
                 flts = ['acopy']
             else:

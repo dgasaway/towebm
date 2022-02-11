@@ -32,7 +32,7 @@ def main():
         fromfile_prefix_chars='@')
     add_basic_arguments(parser)
     parser.add_argument('-q', '--quality',
-        help='audio quality (default 6.0); may be a colon-delimieted list to include additional '
+        help='audio quality (default 6.0); may be a colon-delimited list to include additional '
              'audio tracks from the source, with value 0 or blank used to skip a track',
         action=DelimitedValueAction, dest='audio_quality', metavar='QUALITY', value_type=float,
         default=[6.0])
