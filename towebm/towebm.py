@@ -44,7 +44,8 @@ def main():
     parser.add_argument('--channel-layout-fix',
         help='apply a channel layout fix to 4.1, 5.0, 5.1(side) audio sources to output a '
              'compatible 5.1(rear) layout; may be a colon-delimited list to apply the fix to '
-             'multiple audio tracks from the source; use 0 or blank to apply no fix',
+             'multiple audio tracks from the source; values are 4.1, 5.0, 5.1, 0 or blank to apply '
+             'no fix',
         action=DelimitedValueAction, metavar="FIX_STRING",
         value_choices=['0', '4.1', '5.0', '5.1'], default=['0'])
     # Note: 'pass' is a keyword, so used name 'only_pass' internally.
