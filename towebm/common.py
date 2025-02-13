@@ -42,7 +42,7 @@ class MultilineFormatter(argparse.HelpFormatter):
 # --------------------------------------------------------------------------------------------------
 class DelimitedValueAction(argparse.Action):
     """
-    An argparse action that splits a list of colon-deparated values into a sequence.
+    An argparse action that splits a list of colon-delimited values into a sequence.
     """
     def __init__(self, option_strings, dest, value_type=str, delimiter=':', value_choices=None,
         nargs=None, type=None, choices=None, **kwargs):
@@ -147,8 +147,12 @@ def add_passthrough_arguments(parser):
     group = parser.add_argument_group('passthrough arguments',
         'Additional arguments can be passed to ffmpeg as-is before the output file name by adding '
         'an ''--'' argument followed by the ffmpeg arguments.  Note, because these preceed the '
-        'output file name, they are only useful for output arguments.|n |n '
-        '-- [arg [arg ...]]')
+        'output file name, they are only useful for output arguments.  These must appear after all '
+        'other arguments.')
+    # Add a dummy '--' argument for help text that argparse will never see.
+    group.add_argument('--', 
+        help='ffmpeg output arguments',
+        dest='passthrough_args', metavar='ARG', nargs='*')
 
 # --------------------------------------------------------------------------------------------------
 def check_timecode_arguments(parser, args):
@@ -440,11 +444,16 @@ def parse_args(parser):
     while anything before is parsed using the given argparse parser.  The passthrough arguments are
     added to the result args as 'passthrough_args'.
     """
+    # Grab all the arguments after '--'.
     argv = sys.argv[1:]
     idx = argv.index('--') if '--' in argv else -1
-    pargs = argv[idx + 1:] if idx >= 0 else []
+    unparsed = argv[idx + 1:] if idx >= 0 else []
+ 
+     # Give argparse the rest.
     argv = argv[:idx] if idx >= 0 else argv
     args = parser.parse_args(argv)
-    args.passthrough_args = pargs
+
+    # Replace the contents of the dummy argument with the unparsed args.
+    args.passthrough_args = unparsed
     return args
     
