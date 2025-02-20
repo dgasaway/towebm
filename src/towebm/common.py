@@ -18,7 +18,6 @@ import collections.abc
 import os
 import re
 from typing import TYPE_CHECKING, NamedTuple
-
 if TYPE_CHECKING:
     from argparse import Namespace
 

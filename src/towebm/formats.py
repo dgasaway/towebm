@@ -12,6 +12,8 @@
 #
 # You should have received a copy of the GNU General Public License along with this program; if not,
 # see <http://www.gnu.org/licenses>.
+from __future__ import annotations
+
 from enum import IntEnum
 from typing import Final
 
@@ -32,26 +34,57 @@ class AudioFormat:
         self,
         name: str,
         ffmpeg_codec: str,
-        file_extension: str,
+        container: str,
         quality_type: AudioQualityType,
         default_quality: float,
         supports_multi_tracks: bool,
         requires_channel_layout_fix: bool):
 
         self.name = name
-        self.codec = ffmpeg_codec
-        self.file_extension = file_extension
+        self.ffmpeg_codec = ffmpeg_codec
+        self.file_extension = container
         self.quality_type = quality_type
         self.default_quality = default_quality
         self.supports_multi_tracks = supports_multi_tracks
         self.requires_channel_layout_fix = requires_channel_layout_fix
 
 # --------------------------------------------------------------------------------------------------
-# vorbis output is not picky about channel layout.
-VORBIS: Final[AudioFormat] = AudioFormat(
-    'vorbis', 'libvorbis', '.ogg', AudioQualityType.QUALITY, 6.0, True, False
-)
-# ffmpeg will create a multi-track opus file.  VLC will not play it; mplayer will.
-OPUS: Final[AudioFormat] = AudioFormat(
-    'opus', 'libopus', '.opus', AudioQualityType.BITRATE, 160, True, True
-)
+class AudioFormats:
+    # vorbis output is not picky about channel layout.
+    VORBIS: Final[AudioFormat] = AudioFormat(
+        'vorbis', 'libvorbis', 'ogg', AudioQualityType.QUALITY, 6.0, True, False
+    )
+    # ffmpeg will create a multi-track opus file.  VLC will not play it; mplayer will.
+    OPUS: Final[AudioFormat] = AudioFormat(
+        'opus', 'libopus', 'opus', AudioQualityType.BITRATE, 160, True, True
+    )
+
+# --------------------------------------------------------------------------------------------------
+class VideoFormat:
+    """
+    Represents the attriburtes of a video format.
+    """
+    def __init__(
+        self,
+        codec_name: str,
+        container_options: list[str],
+        ffmpeg_codec: str,
+        passes: list[int],
+        audio_format: AudioFormat,
+        default_quality: float,
+        quality_help: str):
+
+        self.codec_name = codec_name
+        self.ffmpeg_codec = ffmpeg_codec
+        self.passes = passes
+        self.container_options = container_options
+        self.audio_format = audio_format
+        self.default_quality = default_quality
+        self.quality_help = quality_help.format(default_quality)
+
+# --------------------------------------------------------------------------------------------------
+class VideoFormats:
+    WEBM: Final[VideoFormat] = VideoFormat(
+        'VP9', ['webm', 'mkv'], 'libvpx-vp9', [1, 2], AudioFormats.OPUS, 30,
+        'video quality (lower is better, default {0})'
+    )

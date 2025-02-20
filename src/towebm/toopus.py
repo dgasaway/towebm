@@ -12,20 +12,18 @@
 #
 # You should have received a copy of the GNU General Public License along with this program; if not,
 # see <http://www.gnu.org/licenses>.
-
 from __future__ import annotations
 
 import os
 import subprocess
 import sys
 from typing import TYPE_CHECKING
-
 if TYPE_CHECKING:
     from argparse import Namespace
 
 from towebm import common
 from towebm.argparsers import AudioConverterArgumentParser
-from towebm.audioformats import OPUS
+from towebm.formats import AudioFormats
 
 
 # --------------------------------------------------------------------------------------------------
@@ -33,7 +31,7 @@ def main() -> int:
     """
     Executes the operations indicated by the command line arguments.
     """
-    args = AudioConverterArgumentParser(OPUS).parse_args()
+    args = AudioConverterArgumentParser(AudioFormats.OPUS).parse_args()
     if args.verbose >= 1:
         print (args)
 

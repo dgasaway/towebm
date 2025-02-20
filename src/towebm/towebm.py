@@ -12,7 +12,6 @@
 #
 # You should have received a copy of the GNU General Public License along with this program; if not,
 # see <http://www.gnu.org/licenses>.
-
 from __future__ import annotations
 
 import os
@@ -20,21 +19,21 @@ import subprocess
 import sys
 from datetime import datetime
 from typing import TYPE_CHECKING
-
 if TYPE_CHECKING:
     from argparse import Namespace
 
 from towebm import common
-from towebm.argparsers import ConverterArgumentParser
-from towebm.audioformats import OPUS
-
+from towebm.argparsers import VideoConverterArgumentParser
+from towebm.formats import VideoFormats
 
 # --------------------------------------------------------------------------------------------------
 def main() -> int:
     """
     Executes the operations indicated by the command line arguments.
     """
-    args = parse_args()
+    args = VideoConverterArgumentParser(VideoFormats.WEBM).parse_args()
+    if args.verbose >= 1:
+        print (args)
 
     # We'll treat each input file as it's own job, and continue to the next if there is a problem.
     rc = 0
@@ -47,86 +46,6 @@ def main() -> int:
             print('Execution error, proceeding to next source file.')
 
     return rc
-
-# --------------------------------------------------------------------------------------------------
-def parse_args() -> Namespace:
-    """
-    Parses and returns the command line arguments.
-    """
-    parser = ConverterArgumentParser(
-        'Converts videos to webm format (vp9+opus) using a two-pass ffmpeg encode.')
-    parser.add_basic_arguments()
-    parser.add_argument('-q', '--quality',
-        help='video quality (lower is better, default 30)',
-        action='store', type=int, default=30)
-    parser.add_audio_quality_argument(OPUS)
-    parser.add_channel_layout_fix_argument()
-    # Note: 'pass' is a keyword, so used name 'only_pass' internally.
-    parser.add_argument('--pass',
-        help='run only a given pass',
-        action='store', choices=['1', '2'], dest='only_pass')
-    parser.add_argument('--delete-log',
-        help='delete pass 1 log (otherwise keep with timestamp)',
-        action='store_true')
-    parser.add_argument('-C', '--container',
-        help='container format (default webm)',
-        action='store', choices=['webm', 'mkv'], default='webm')
-
-    # Timecode/segment arguments.
-    parser.add_timecode_argument_group()
-
-    # Video/audio filter arguments.
-    fgroup = parser.add_argument_group('video/audio filter arguments',
-        'The deinterlate filter is applied first; standard crop filters (e.g., "-s crop43") are '
-        'applied before custom crop values (e.g., "-x 10 10"); crop filters are applied before '
-        'scale filters (e.g., "-s scale23");  and all standard filters are applied before custom '
-        '(i.e., "-f" and "-a") filters.')
-    fgroup.add_argument('-s', '--standard-filter',
-        help='standard video/audio filter; '
-             '[crop43] crops horizontally to 4:3 aspect ratio; '
-             '[scale23] scales down by 2/3 (e.g., 1080p to 720p); '
-             '[gray] converts to grayscale',
-        action='append', choices=['crop43', 'scale23', 'gray'])
-    fgroup.add_argument('-d', '--deinterlace',
-        help='deinterlate filter; '
-             '[frame] output a frame from each pair of input fields; '
-             '[field] output an interpolated frame from each input field; '
-             '[ivtc] inverse telecine; '
-             '[ivtc+] inverse telecine with fallback deinterlace; '
-             '[selframe] selectively deinterlace frames ',
-        action='store', choices=['frame', 'field', 'ivtc', 'ivtc+', 'selframe'])
-    fgroup.add_argument('--parity',
-        help='set a specific parity for the deinterlace filter; '
-             '[tff] top field first; '
-             '[bff] bottom field first',
-        action='store', choices=['tff', 'bff'])
-    parser.add_fade_arguments(fgroup)
-    fgroup.add_argument('-x', '--crop-width',
-        help='left and right crop values',
-        nargs=2, type=int, metavar=('LEFT', 'RIGHT'))
-    fgroup.add_argument('-y', '--crop-height',
-        help='top and bottom crop values',
-        nargs=2, type=int, metavar=('TOP', 'BOTTOM'))
-    fgroup.add_argument('-g', '--gamma',
-        help='gramma correction (default 1.0; no correction)',
-        action='store', type=float, default=1.0)
-    fgroup.add_argument('-vf', '--video-filter',
-        help='custom video filter, similar to -vf ffmpeg argument',
-        action='append')
-    fgroup.add_argument('-af', '--audio-filter',
-        help='custom audio filter, similar to -af ffmpeg argument',
-        action='append')
-    fgroup.add_argument('--volume',
-        help='amplitude (volume) multiplier, < 1.0 to reduce volume, or > 1.0 to increase volume',
-        action='store', type=float, default=1.0)
-
-    parser.add_passthrough_arguments()
-
-    args = parser.parse_args()
-    if args.verbose >= 1:
-        print (args)
-
-    return args
 
 # --------------------------------------------------------------------------------------------------
 def get_pass1_command(args: Namespace, segment: common.Segment, file_name: str) -> list[str]:

@@ -19,9 +19,8 @@ import sys
 from argparse import Action, ArgumentError, ArgumentParser, Namespace, _ArgumentGroup
 from typing import Any, Sequence
 
-from towebm import audioformats
+from towebm import formats
 from towebm._version import __version__
-
 
 # --------------------------------------------------------------------------------------------------
 class DelimitedValueAction(Action):
@@ -141,12 +140,12 @@ class ConverterArgumentParser(ExtraArgumentParser):
 
     # ----------------------------------------------------------------------------------------------
     def add_audio_quality_argument(
-            self, format: audioformats.AudioFormat, group: _ArgumentGroup | None=None) -> None:
+            self, format: formats.AudioFormat, group: _ArgumentGroup | None=None) -> None:
         """
         Add an argument quality argument for the specified audio format.
         """
         parent = self if group is None else group
-        if format.quality_type == audioformats.AudioQualityType.BITRATE:
+        if format.quality_type == formats.AudioQualityType.BITRATE:
             text = f'audio bitrate in kbps (default {format.default_quality})'
             value_type = int
         else:
@@ -219,20 +218,6 @@ class ConverterArgumentParser(ExtraArgumentParser):
             action='store', type=float, metavar='SECONDS')
 
     # ----------------------------------------------------------------------------------------------
-    def add_audio_filter_arguments(self, group: _ArgumentGroup | None=None) -> None:
-        """
-        Adds --volume and --audio-filter arguments.
-        """
-        parent = self if group is None else group
-        parent.add_argument('--volume',
-            help='amplitude (volume) multiplier, < 1.0 to reduce volume, or > 1.0 to increase '
-                'volume; recommended to use replaygain to tag the file post-conversion, instead',
-            action='store', type=float, default=1.0)
-        parent.add_argument('-af', '--audio-filter',
-            help='custom audio filter, passed as -af argument to ffmpeg',
-            action='append', dest='audio_filter')
-
-    # ----------------------------------------------------------------------------------------------
     def add_channel_layout_fix_argument(self, group: _ArgumentGroup | None=None) -> None:
         """
         Add a --channel-layout-fix argument.
@@ -247,7 +232,24 @@ class ConverterArgumentParser(ExtraArgumentParser):
             value_choices=['0', '4.1', '5.0', '5.1'], default=['0'])
 
     # ----------------------------------------------------------------------------------------------
-    def add_passthrough_arguments(self) -> _ArgumentGroup:
+    def add_audio_filter_arguments(
+            self, format: formats.AudioFormat, group: _ArgumentGroup | None=None) -> None:
+        """
+        Add audio filter arguments.
+        """
+        parent = self if group is None else group
+        parent.add_argument('--volume',
+            help='amplitude (volume) multiplier, < 1.0 to reduce volume, or > 1.0 to increase '
+                'volume; recommended to use replaygain to tag the file post-conversion, instead',
+            action='store', type=float, default=1.0)
+        parent.add_argument('-af', '--audio-filter',
+            help='custom audio filter, passed as -af argument to ffmpeg',
+            action='append', dest='audio_filter')
+        if format.requires_channel_layout_fix:
+            self.add_channel_layout_fix_argument(parent)
+
+    # ----------------------------------------------------------------------------------------------
+    def add_passthrough_argument_group(self) -> _ArgumentGroup:
         """
         Add a new group containing a dummy passthrough argument and return the group.
         """
@@ -320,7 +322,7 @@ class AudioConverterArgumentParser(ConverterArgumentParser):
     """
     A `ConverterArgumentParser` subclass for audio converter tools.
     """
-    def __init__(self, audio_format: audioformats.AudioFormat):
+    def __init__(self, audio_format: formats.AudioFormat):
         """
         Construct an argument parser pre-populated with arguments for an audio converter tool that
         outputs the specified format.
@@ -328,15 +330,21 @@ class AudioConverterArgumentParser(ConverterArgumentParser):
         self.audio_format = audio_format
         desc = f'Converts audio/video files to audio-only {audio_format.name} using ffmpeg'
         super().__init__(desc)
+
+        # Options group
         self.add_basic_arguments()
         self.add_audio_quality_argument(audio_format)
-        if audio_format.requires_channel_layout_fix:
-            self.add_channel_layout_fix_argument()
+
+        # Timecode group
         self.add_timecode_argument_group()
-        grp = self.add_argument_group('filter_arguments')
-        self.add_fade_arguments(grp)
-        self.add_audio_filter_arguments(grp)
-        self.add_passthrough_arguments()
+
+        # Filter group
+        group = self.add_argument_group('filter arguments')
+        self.add_fade_arguments(group)
+        self.add_audio_filter_arguments(audio_format, group)
+
+        # Passthrough
+        self.add_passthrough_argument_group()
 
     # ----------------------------------------------------------------------------------------------
     def parse_args(self, args: Sequence[str] | None=None, namespace=None) -> Namespace:
@@ -351,3 +359,118 @@ class AudioConverterArgumentParser(ConverterArgumentParser):
             self.error(msg)
 
         return parsed
+
+# --------------------------------------------------------------------------------------------------
+class VideoConverterArgumentParser(ConverterArgumentParser):
+    def __init__(self, video_format: formats.VideoFormat):
+        """
+        Construct an argument parser pre-populated with arguments for a video converter tool that
+        outputs the specified format.
+        """
+        self.video_format = video_format
+        s = ' or '.join(video_format.container_options)
+        desc = (
+            f'Converts video files to {video_format.codec_name} + '
+            f'{video_format.audio_format.name} in a {s} container using a '
+            f'{len(video_format.passes)}-pass ffmpeg encode.'
+        )
+        super().__init__(desc)
+
+        # Options group
+        self.add_basic_arguments()
+        self.add_video_quality_argument()
+        self.add_audio_quality_argument(video_format.audio_format)
+
+        # Add arguments only needed if more than one pass.  Note: 'pass' is a keyword, so
+        # 'only_pass' is used internally.
+        if len(video_format.passes) > 1:
+            self.add_multi_pass_arguments(video_format.passes)
+
+        # Check for more than one container choice.
+        if len(video_format.container_options) > 1:
+            self.add_container_argument(video_format.container_options)
+
+        # Timecode group.
+        self.add_timecode_argument_group()
+
+        # Video filter group.
+        group = self.add_argument_group('video filter arguments',
+            'The deinterlate filter is applied first; standard crop filters (e.g., "-s crop43") are '
+            'applied before custom crop values (e.g., "-x 10 10"); crop filters are applied before '
+            'scale filters (e.g., "-s scale23");  and all standard filters are applied before custom '
+            '-vf filters.')
+        self.add_video_filter_arguments(group)
+
+        # Audio filter group.
+        group = self.add_argument_group('audio filter arguments')
+        self.add_audio_filter_arguments(video_format.audio_format, group)
+
+        # Passthrough
+        self.add_passthrough_argument_group()
+
+    # ----------------------------------------------------------------------------------------------
+    def add_video_quality_argument(self, group: _ArgumentGroup | None=None):
+        parent = self if group is None else group
+        parent.add_argument('-q', '--quality',
+            help=self.video_format.quality_help,
+            action='store', type=int, default=self.video_format.default_quality)
+
+    # ----------------------------------------------------------------------------------------------
+    def add_video_filter_arguments(self, group: _ArgumentGroup | None=None):
+        parent = self if group is None else group
+        parent.add_argument('-s', '--standard-filter',
+            help='standard video/audio filter; '
+                '[crop43] crops horizontally to 4:3 aspect ratio; '
+                '[scale23] scales down by 2/3 (e.g., 1080p to 720p); '
+                '[gray] converts to grayscale',
+            action='append', choices=['crop43', 'scale23', 'gray'])
+        parent.add_argument('-d', '--deinterlace',
+            help='deinterlate filter; '
+                '[frame] output a frame from each pair of input fields; '
+                '[field] output an interpolated frame from each input field; '
+                '[ivtc] inverse telecine; '
+                '[ivtc+] inverse telecine with fallback deinterlace; '
+                '[selframe] selectively deinterlace frames ',
+            action='store', choices=['frame', 'field', 'ivtc', 'ivtc+', 'selframe'])
+        parent.add_argument('--parity',
+            help='set a specific parity for the deinterlace filter; '
+                '[tff] top field first; '
+                '[bff] bottom field first',
+            action='store', choices=['tff', 'bff'])
+
+        self.add_fade_arguments(parent)
+
+        parent.add_argument('-x', '--crop-width',
+            help='left and right crop values',
+            nargs=2, type=int, metavar=('LEFT', 'RIGHT'))
+        parent.add_argument('-y', '--crop-height',
+            help='top and bottom crop values',
+            nargs=2, type=int, metavar=('TOP', 'BOTTOM'))
+        parent.add_argument('-g', '--gamma',
+            help='gramma correction (default 1.0; no correction)',
+            action='store', type=float, default=1.0)
+        parent.add_argument('-vf', '--video-filter',
+            help='custom video filter, similar to -vf ffmpeg argument',
+            action='append')
+
+    # ----------------------------------------------------------------------------------------------
+    def add_multi_pass_arguments(self, passes: list[int], group: _ArgumentGroup | None=None):
+        """
+        Add arguments that relate to a two-pass encode.
+        """
+        parent = self if group is None else group
+        parent.add_argument('--pass',
+            help='run only a given pass',
+            action='store', choices=passes, dest='only_pass')
+        parent.add_argument('--delete-log',
+            help='delete pass 1 log (otherwise keep with timestamp)',
+            action='store_true')
+
+    # ----------------------------------------------------------------------------------------------
+    def add_container_argument(self, choices: Sequence[str], group: _ArgumentGroup | None=None):
+        """
+        Add an argument for selection of the container format.
+        """
+        self.add_argument('-C', '--container',
+            help=f'container format (default {choices[0]})',
+            action='store', choices=choices, default=choices[0])
