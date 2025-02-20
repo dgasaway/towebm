@@ -19,7 +19,7 @@ import os
 import subprocess
 import sys
 from towebm.argparsers import ToolArgumentParser, DelimitedValueAction
-from towebm.common import *
+from towebm import common
 
 # --------------------------------------------------------------------------------------------------
 def main():
@@ -81,17 +81,17 @@ def get_ffmpeg_command(args, segment, file_name):
     title = os.path.splitext(os.path.basename(file_name))[0]
 
     result = ['ffmpeg', '-nostdin', '-hide_banner']
-    result += get_segment_arguments(segment)
+    result += common.get_segment_arguments(segment)
     result += [
         '-i', file_name,
         '-vn',
         '-c:a', 'libvorbis'
         ]
-    result += get_audio_filter_args(args, segment)
-    result += get_audio_quality_args(args)
-    result += get_audio_metadata_map_args(args)
+    result += common.get_audio_filter_args(args, segment)
+    result += common.get_audio_quality_args(args)
+    result += common.get_audio_metadata_map_args(args)
     result += args.passthrough_args
-    result += [get_safe_filename(title + '.ogg', args.always_number)]
+    result += [common.get_safe_filename(title + '.ogg', args.always_number)]
 
     return result
 
@@ -113,9 +113,9 @@ def process_file(args, file_name):
     """
     if args.segments is not None:
         for segment in args.segments:
-            process_segment(args, Segment(segment[0], segment[1], None), file_name)
+            process_segment(args, common.Segment(segment[0], segment[1], None), file_name)
     else:
-        process_segment(args, Segment(args.start, args.end, args.duration), file_name)
+        process_segment(args, common.Segment(args.start, args.end, args.duration), file_name)
 
 # --------------------------------------------------------------------------------------------------
 if __name__ == "__main__":
