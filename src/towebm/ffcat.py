@@ -27,6 +27,7 @@ def main():
     """
     Executes the operations indicated by the command line arguments.
     """
+    rc = 0
     args = parse_args()
     file_list = NamedTemporaryFile(mode='wt', dir=os.getcwd(), delete=False)
     try:
@@ -38,8 +39,11 @@ def main():
         if args.verbose >= 1:
             print(ffmpeg_args)
         subprocess.check_call(ffmpeg_args)
+    except subprocess.CalledProcessError as e:
+        rc = e.returncode        
     finally:
         os.remove(file_list.name)
+        return rc
 
 # --------------------------------------------------------------------------------------------------
 def parse_args():
