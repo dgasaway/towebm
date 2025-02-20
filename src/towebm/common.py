@@ -189,12 +189,18 @@ def get_audio_filter_args(args: Namespace, segment: Segment) -> list[str]:
                 i < len(args.channel_layout_fix) and
                 args.channel_layout_fix[i] is not None and
                 args.channel_layout_fix[i] != '0')
-            if map_fix and (args.channel_layout_fix[i] == '5.1'):
-                flts = ['channelmap=channel_layout=5.1'] + filters
-            elif map_fix and args.channel_layout_fix[i] == '5.0':
-                flts = ['pan=5.1|FR=FR|FL=FL|FC=FC|BL=SL|BR=SR'] + filters
-            elif map_fix and args.channel_layout_fix[i] == '4.1':
-                flts = ['pan=5.1|FR=FR|FL=FL|FC=FC|BL=BC|BR=BC|LFE=LFE'] + filters
+            if map_fix:
+                layout = args.channel_layout_fix[i]
+                if layout == '5.1':
+                    flts = ['channelmap=channel_layout=5.1']
+                elif layout == '5.0':
+                    flts = ['pan=5.1|FR=FR|FL=FL|FC=FC|BL=SL|BR=SR']
+                elif layout == '4.1':
+                    flts = ['pan=5.1|FR=FR|FL=FL|FC=FC|BL=BC|BR=BC|LFE=LFE']
+                else:
+                    msg = f'unexpected channel layout fix value {layout}'
+                    raise ValueError(msg)
+                flts += filters
             elif len(filters) == 0:
                 flts = ['acopy']
             else:
