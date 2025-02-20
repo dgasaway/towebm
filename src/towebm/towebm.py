@@ -54,8 +54,7 @@ def parse_args() -> Namespace:
     Parses and returns the command line arguments.
     """
     parser = ConverterArgumentParser(
-        description='Converts videos to webm format (vp9+opus) using a two-pass ffmpeg encode.',
-        fromfile_prefix_chars='@')
+        'Converts videos to webm format (vp9+opus) using a two-pass ffmpeg encode.')
     parser.add_basic_arguments()
     parser.add_argument('-q', '--quality',
         help='video quality (lower is better, default 30)',

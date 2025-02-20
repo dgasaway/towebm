@@ -112,7 +112,12 @@ class ConverterArgumentParser(ExtraArgumentParser):
     A `PassthroughArgumentParser` subclass that adds methods for adding shared arguments for
     converter tools in this package.
     """
-    _has_passthrough_arguments = False
+    def __init__(self, description: str | None):
+        """
+        Construct an instance with the specified description.
+        """
+        super().__init__(description=description, fromfile_prefix_chars='@')
+        self._has_passthrough_arguments = False
 
     # ----------------------------------------------------------------------------------------------
     def add_basic_arguments(self, group: _ArgumentGroup | None=None) -> None:
@@ -322,7 +327,7 @@ class AudioConverterArgumentParser(ConverterArgumentParser):
         """
         self.audio_format = audio_format
         desc = f'Converts audio/video files to audio-only {audio_format.name} using ffmpeg'
-        super().__init__(description = desc, fromfile_prefix_chars='@')
+        super().__init__(desc)
         self.add_basic_arguments()
         self.add_audio_quality_argument(audio_format)
         if audio_format.requires_channel_layout_fix:
