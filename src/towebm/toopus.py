@@ -56,12 +56,7 @@ def parse_args():
              'multiple source audio tracks, with value 0 or blank used to skip a track',
         action=DelimitedValueAction, dest='audio_quality', metavar='BITRATE', value_type=int,
         default=[160])
-    parser.add_argument('--channel-layout-fix',
-        help='apply a channel layout fix to 4.1, 5.0, 5.1(side) audio sources to output a '
-             'compatible 5.1(rear) layout; may be a colon-delimited list to apply the fix to '
-             'multiple audio tracks from the source; use 0 or blank to apply no fix',
-        action=DelimitedValueAction, metavar="FIX_STRING",
-        value_choices=['0', '4.1', '5.0', '5.1'], default=['0'])
+    parser.add_channel_layout_fix_argument()
     parser.add_timecode_arguments()
     parser.add_audio_filter_arguments()
     parser.add_source_file_arguments()

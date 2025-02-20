@@ -57,6 +57,7 @@ def parse_args():
         metavar='QUALITY',
         value_type=float,
         default=[6.0])
+    # Note: Vorbis output isn't picky about channel layout.
     parser.add_timecode_arguments()
     parser.add_audio_filter_arguments()
     parser.add_source_file_arguments()

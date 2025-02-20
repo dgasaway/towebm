@@ -173,6 +173,19 @@ class ToolArgumentParser(ExtraArgumentParser):
         return group
 
     # ----------------------------------------------------------------------------------------------
+    def add_channel_layout_fix_argument(self) -> None:
+        """
+        Add a channel layout fix argument.
+        """
+        self.add_argument('--channel-layout-fix',
+            help=f'apply a channel layout fix to 4.1, 5.0, 5.1(side) audio sources to output a '
+                'compatible 5.1(rear) layout; may be a colon-delimited list to apply the fix to '
+                'multiple audio tracks from the source; choices are 4.1, 5.0, 5.1; 0 or blank '
+                'apply no fix',
+            action=DelimitedValueAction, metavar="FIX_STRING",
+            value_choices=['0', '4.1', '5.0', '5.1'], default=['0'])
+
+    # ----------------------------------------------------------------------------------------------
     def add_source_file_arguments(self, help: str=None) -> None:
         """
         Add a positional argument that requires one or more source files.
