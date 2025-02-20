@@ -145,12 +145,15 @@ class ConverterArgumentParser(ExtraArgumentParser):
         Add an argument quality argument for the specified audio format.
         """
         parent = self if group is None else group
-        if format.quality_type == formats.AudioQualityType.BITRATE:
-            text = f'audio bitrate in kbps (default {format.default_quality})'
-            value_type = int
-        else:
+        if format.quality_type == formats.AudioQualityType.QUALITY:
             text = f'audio quality (default {format.default_quality})'
             value_type = float
+        elif format.quality_type == formats.AudioQualityType.COMP_LEVEL:
+            text = f'compression level (default {format.default_quality})'
+            value_type = int
+        else:
+            text = f'audio bitrate in kbps (default {format.default_quality})'
+            value_type = int
 
         if format.supports_multi_tracks:
             text += (
@@ -354,12 +357,14 @@ class AudioConverterArgumentParser(ConverterArgumentParser):
         """
         parsed = super().parse_args(args, namespace)
 
-        if len([q for q in parsed.audio_quality if q is not None and q > 0]) < 1:
-            msg = (
-                f'at least one positive audio {self.audio_format.quality_type.name} must be '
-                f'specified'
-            )
-            self.error(msg)
+        qual_name = self.audio_format.quality_type.name
+        if self.audio_format.supports_multi_tracks:
+            if len([q for q in parsed.audio_quality if q is not None and q > 0]) < 1:
+                msg = f'at least one positive audio {qual_name} must be specified'
+                self.error(msg)
+        elif len([q for q in parsed.audio_quality if q is not None and q > 0]) != 1:
+                msg = f'exactly one non-zero {qual_name} must be specified'
+                self.error(msg)
 
         return parsed
 

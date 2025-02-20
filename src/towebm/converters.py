@@ -195,18 +195,17 @@ class Converter(ABC):
         Return a list of ffmpeg arguments for a specified audio quality and optional output stream
         index.
         """
+        quality_sfx = ''
         if self.audio_format.quality_type == AudioQualityType.QUALITY:
-            if stream_index is None:
-                arg = '-q:a'
-            else:
-                arg = f'-q:a:{stream_index}'
-            return [arg, str(quality)]
+            arg = '-q:a'
+        elif self.audio_format.quality_type == AudioQualityType.COMP_LEVEL:
+            arg = '-compression_level:a'
         else:
-            if stream_index is None:
-                arg = '-b:a'
-            else:
-                arg = f'-b:a:{stream_index}'
-            return [arg, f'{quality}k']
+            arg = '-b:a'
+            quality_sfx = 'k'
+
+        arg = arg if stream_index is None else f'{arg}:{stream_index}'
+        return [arg, f'{quality}{quality_sfx}']
 
     # ----------------------------------------------------------------------------------------------
     def get_audio_quality_args(self) -> list[str]:

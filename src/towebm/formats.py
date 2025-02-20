@@ -24,6 +24,7 @@ class AudioQualityType(IntEnum):
     """
     BITRATE = 1
     QUALITY = 2
+    COMP_LEVEL = 3
 
 # --------------------------------------------------------------------------------------------------
 class AudioFormat:
@@ -57,6 +58,9 @@ class AudioFormats:
     # ffmpeg will create a multi-track opus file.  VLC will not play it; mplayer will.
     OPUS: Final[AudioFormat] = AudioFormat(
         'opus', 'libopus', 'opus', AudioQualityType.BITRATE, 160, True, True
+    )
+    FLAC: Final[AudioFormat] = AudioFormat(
+        'flac', 'flac', 'flac', AudioQualityType.COMP_LEVEL, 8, False, False
     )
 
 # --------------------------------------------------------------------------------------------------

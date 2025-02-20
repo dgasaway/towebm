@@ -36,6 +36,7 @@ Download = "https://github.com/dgasaway/towebm/releases"
 towebm = "towebm.towebm:main"
 toopus = "towebm.toopus:main"
 tovorbis = "towebm.tovorbis:main"
+toflac = "towebm.toflac:main"
 ffcat = "towebm.ffcat:main"
 
 [tool.hatch.version]
