@@ -19,6 +19,7 @@ import os
 import subprocess
 import sys
 from argparse import ArgumentParser
+from towebm.argparsers import ToolArgumentParser, DelimitedValueAction
 from towebm.common import *
 
 
@@ -46,11 +47,10 @@ def parse_args():
     """
     Parses and returns the command line arguments.
     """
-    parser = ArgumentParser(
+    parser = ToolArgumentParser(
         description='Converts audio/video files to audio-only opus using ffmpeg.',
-        formatter_class=MultilineFormatter,
         fromfile_prefix_chars='@')
-    add_basic_arguments(parser)
+    parser.add_basic_arguments()
     parser.add_argument('-b', '--bitrate',
         help='audio bitrate in kbps (default 160); may be a colon-delimited list to select from '
              'multiple source audio tracks, with value 0 or blank used to skip a track',
@@ -62,24 +62,13 @@ def parse_args():
              'multiple audio tracks from the source; use 0 or blank to apply no fix',
         action=DelimitedValueAction, metavar="FIX_STRING",
         value_choices=['0', '4.1', '5.0', '5.1'], default=['0'])
-
-    # Timecode/segment arguments.
-    add_timecode_arguments(parser)
-
-    # Filter arguments.
-    add_audio_filter_arguments(parser)
-
-    # Want this as the last group.
-    add_passthrough_arguments(parser)
-
-    parser.add_argument('source_files',
-        help='source video files to convert',
-        action='store', metavar='source_file', nargs='+')
+    parser.add_timecode_arguments()
+    parser.add_audio_filter_arguments()
+    parser.add_source_file_arguments()
+    parser.add_passthrough_arguments()
 
     # Parse the arguments and do extra argument checks.
-    args = parse_args_with_passthrough(parser)
-    if args.segments is not None and len(args.segments) > 1:
-        args.always_number = True
+    args = parser.parse_args()
     qcnt = len([q for q in args.audio_quality if q is not None and q > 0])
     if qcnt < 1:
         parser.error('at least one positive audio bitrate must be specified')
@@ -89,9 +78,7 @@ def parse_args():
     if args.verbose >= 1:
         print (args)
 
-    check_timecode_arguments(parser, args)
-    check_source_files_exist(parser, args)
-
+    return args
 
 # --------------------------------------------------------------------------------------------------
 def get_ffmpeg_command(args, segment, file_name):

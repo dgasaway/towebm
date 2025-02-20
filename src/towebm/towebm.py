@@ -18,10 +18,9 @@
 import os
 import subprocess
 import sys
-from argparse import ArgumentParser
 from datetime import datetime
+from towebm.argparsers import ToolArgumentParser, DelimitedValueAction
 from towebm.common import *
-
 
 # --------------------------------------------------------------------------------------------------
 def main():
@@ -47,11 +46,10 @@ def parse_args():
     """
     Parses and returns the command line arguments.
     """
-    parser = ArgumentParser(
+    parser = ToolArgumentParser(
         description='Converts videos to webm format (vp9+opus) using a two-pass ffmpeg encode.',
-        formatter_class=MultilineFormatter,
         fromfile_prefix_chars='@')
-    add_basic_arguments(parser)
+    parser.add_basic_arguments()
     parser.add_argument('-q', '--quality',
         help='video quality (lower is better, default 30)',
         action='store', type=int, default=30)
@@ -79,7 +77,7 @@ def parse_args():
         action='store', choices=['webm', 'mkv'], default='webm')
 
     # Timecode/segment arguments.
-    add_timecode_arguments(parser)
+    parser.add_timecode_arguments()
 
     # Video/audio filter arguments.
     fgroup = parser.add_argument_group('video/audio filter arguments',
@@ -131,23 +129,12 @@ def parse_args():
         help='amplitude (volume) multiplier, < 1.0 to reduce volume, or > 1.0 to increase volume',
         action='store', type=float, default=1.0)
 
-    # Want this as the last group.
-    add_passthrough_arguments(parser)
+    parser.add_source_file_arguments('source video files to convert')
+    parser.add_passthrough_arguments()
 
-    parser.add_argument('source_files',
-        help='source video files to convert',
-        action='store', metavar='source_file', nargs='+')
-
-    # Parse the arguments and do extra argument checks.
-    args = parse_args_with_passthrough(parser)
-    if args.segments is not None and len(args.segments) > 1:
-        args.always_number = True
-
+    args = parser.parse_args()
     if args.verbose >= 1:
         print (args)
-
-    check_timecode_arguments(parser, args)
-    check_source_files_exist(parser, args)
 
     return args
 

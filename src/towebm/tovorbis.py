@@ -18,9 +18,8 @@
 import os
 import subprocess
 import sys
-from argparse import ArgumentParser
+from towebm.argparsers import ToolArgumentParser, DelimitedValueAction
 from towebm.common import *
-
 
 # --------------------------------------------------------------------------------------------------
 def main():
@@ -46,42 +45,30 @@ def parse_args():
     """
     Parses and returns the command line arguments.
     """
-    parser = ArgumentParser(
+    parser = ToolArgumentParser(
         description='Converts audio/video files to audio-only vorbis using ffmpeg.',
-        formatter_class=MultilineFormatter,
         fromfile_prefix_chars='@')
-    add_basic_arguments(parser)
+    parser.add_basic_arguments()
     parser.add_argument('-q', '--quality',
         help='audio quality (default 6.0); may be a colon-delimited list to include additional '
              'audio tracks from the source, with value 0 or blank used to skip a track',
-        action=DelimitedValueAction, dest='audio_quality', metavar='QUALITY', value_type=float,
+        action=DelimitedValueAction,
+        dest='audio_quality',
+        metavar='QUALITY',
+        value_type=float,
         default=[6.0])
-
-    # Timecode/segment arguments.
-    add_timecode_arguments(parser)
-
-    # Filter arguments.
-    add_audio_filter_arguments(parser)
-
-    # Want this as the last group.
-    add_passthrough_arguments(parser)
-
-    parser.add_argument('source_files',
-        help='source video files to convert',
-        action='store', metavar='source_file', nargs='+')
+    parser.add_timecode_arguments()
+    parser.add_audio_filter_arguments()
+    parser.add_source_file_arguments()
+    parser.add_passthrough_arguments()
 
     # Parse the arguments and do extra argument checks.
-    args = parse_args_with_passthrough(parser)
-    if args.segments is not None and len(args.segments) > 1:
-        args.always_number = True
-
-    if args.verbose >= 1:
-        print (args)
+    args = parser.parse_args()
     if len([q for q in args.audio_quality if q is not None and q > 0]) < 1:
         parser.error('at least one positive audio quality must be specified')
 
-    check_timecode_arguments(parser, args)
-    check_source_files_exist(parser, args)
+    if args.verbose >= 1:
+        print (args)
 
     return args
 
