@@ -34,7 +34,9 @@ def main() -> int:
     file_list = NamedTemporaryFile(mode='wt', dir=os.getcwd(), delete=False)
     try:
         for source_file in args.source_files:
-            file_list.write("file '{0}'\n".format(source_file.replace("'", r"'\''")))
+            # File names will be in single quotes with existing quotes padded.
+            name = source_file.replace("'", r"'\''")
+            file_list.write(f"file '{name}'\n")
         file_list.close()
         ffmpeg_args = ['ffmpeg', '-f', 'concat', '-safe', '0', '-i', file_list.name, '-c', 'copy',
                        args.output_file]
