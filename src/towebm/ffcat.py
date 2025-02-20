@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # ffcat - Concatenates media files using ffmpeg.
 # Copyright (C) 2025 David Gasaway
 # https://github.com/dgasaway/towebm
