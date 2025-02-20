@@ -12,13 +12,12 @@
 #
 # You should have received a copy of the GNU General Public License along with this program; if not,
 # see <http://www.gnu.org/licenses>.
-
 from __future__ import annotations
 
 import collections.abc
 import os
 import re
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING, NamedTuple, Final
 
 if TYPE_CHECKING:
     from argparse import Namespace

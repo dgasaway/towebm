@@ -19,6 +19,7 @@ import os
 import sys
 from argparse import Action, ArgumentError, ArgumentParser, Namespace, _ArgumentGroup
 from typing import Any, Sequence
+from towebm import audioformats
 
 from towebm._version import __version__
 
@@ -107,17 +108,17 @@ class ExtraArgumentParser(ArgumentParser):
         return parsed
 
 # --------------------------------------------------------------------------------------------------
-class ToolArgumentParser(ExtraArgumentParser):
+class ConverterArgumentParser(ExtraArgumentParser):
     """
-    A `PassthroughArgumentParser` sublass that adds methods for adding shared arguments for tools
-    in this package.
+    A `PassthroughArgumentParser` subclass that adds methods for adding shared arguments for
+    converter tools in this package.
     """
     _has_passthrough_arguments = False
 
     # ----------------------------------------------------------------------------------------------
     def add_basic_arguments(self) -> None:
         """
-        Add basic arguments that apply to all conversion scripts.
+        Add basic arguments that apply to all converter tools.
         """
         self.add_argument('--version', action='version', version='%(prog)s ' + __version__)
         self.add_argument('-#', '--always-number',
@@ -129,6 +130,34 @@ class ToolArgumentParser(ExtraArgumentParser):
         self.add_argument('-v', '--verbose',
             help='verbose output',
             action='count', default=0)
+
+    # ----------------------------------------------------------------------------------------------
+    def add_audio_quality_argument(self, format: audioformats.AudioFormat) -> None:
+        """
+        Add an argument quality argument for the specified audio format.
+        """
+        if format.quality_type == audioformats.AudioQualityType.BITRATE:
+            text = f'audio bitrate in kbps (default {format.default_quality})'
+            value_type = int
+        else:
+            text = f'audio quality (default {format.default_quality})'
+            value_type = float
+
+        if format.supports_multi_tracks:
+            text += (
+                '; may be a colon-delimited list to include  additional audio tracks from the '
+                'source, with value 0 or blank used to skip a track'
+            )
+
+        self.add_argument(
+            f'-{format.quality_type.name[0].lower()}',
+            f'--{format.quality_type.name.lower()}',
+            help=text,
+            action=DelimitedValueAction,
+            dest='audio_quality',
+            metavar=format.quality_type.name,
+            value_type=value_type,
+            default=format.default_quality)
 
     # ----------------------------------------------------------------------------------------------
     def add_timecode_arguments(self) -> _ArgumentGroup:
@@ -269,4 +298,39 @@ class ToolArgumentParser(ExtraArgumentParser):
         self._check_timecode_arguments(parsed)
         if 'source_files' in parsed and parsed.source_files is not None:
             self._check_source_files_exist(parsed.source_files)
+        return parsed
+
+# --------------------------------------------------------------------------------------------------
+class AudioConverterArgumentParser(ConverterArgumentParser):
+    """
+    A `ConverterArgumentParser` subclass for audio converter tools.
+    """
+    def __init__(self, audio_format: audioformats.AudioFormat):
+        """
+        Construct an argument parser pre-populated with arguments for an audio converter tool that
+        outputs the specified format.
+        """
+        self.audio_format = audio_format
+        desc = f'Converts audio/video files to audio-only {audio_format.name} using ffmpeg'
+        super().__init__(description = desc, fromfile_prefix_chars='@')
+        self.add_basic_arguments()
+        self.add_audio_quality_argument(audio_format)
+        if audio_format.requires_channel_layout_fix:
+            self.add_channel_layout_fix_argument()
+        self.add_timecode_arguments()
+        self.add_audio_filter_arguments()
+        self.add_source_file_arguments()
+        self.add_passthrough_arguments()
+
+    # ----------------------------------------------------------------------------------------------
+    def parse_args(self, args: Sequence[str] | None=None, namespace=None) -> Namespace:
+        """
+        Convert argument strings to objects and assign them as attributes of the namespace.  Return
+        the populated namespace.
+        """
+        parsed = super().parse_args(args, namespace)
+
+        if len([q for q in parsed.audio_quality if q is not None and q > 0]) < 1:
+            msg = f'at least one positive audio {self.audio_format.quality_type.name} must be specified'
+            self.error(msg)
         return parsed

@@ -24,7 +24,8 @@ if TYPE_CHECKING:
     from argparse import Namespace
 
 from towebm import common
-from towebm.argparsers import DelimitedValueAction, ToolArgumentParser
+from towebm.argparsers import AudioConverterArgumentParser
+from towebm.audioformats import OPUS
 
 
 # --------------------------------------------------------------------------------------------------
@@ -32,7 +33,9 @@ def main() -> int:
     """
     Executes the operations indicated by the command line arguments.
     """
-    args = parse_args()
+    args = AudioConverterArgumentParser(OPUS).parse_args()
+    if args.verbose >= 1:
+        print (args)
 
     # We'll treat each input file as it's own job, and continue to the next if there is a problem.
     rc = 0
@@ -45,38 +48,6 @@ def main() -> int:
             print('Execution error, proceeding to next source file.')
 
     return rc
-
-# --------------------------------------------------------------------------------------------------
-def parse_args() -> Namespace:
-    """
-    Parses and returns the command line arguments.
-    """
-    parser = ToolArgumentParser(
-        description='Converts audio/video files to audio-only opus using ffmpeg.',
-        fromfile_prefix_chars='@')
-    parser.add_basic_arguments()
-    parser.add_argument('-b', '--bitrate',
-        help='audio bitrate in kbps (default 160); may be a colon-delimited list to select from '
-             'multiple source audio tracks, with value 0 or blank used to skip a track',
-        action=DelimitedValueAction, dest='audio_quality', metavar='BITRATE', value_type=int,
-        default=[160])
-    parser.add_channel_layout_fix_argument()
-    parser.add_timecode_arguments()
-    parser.add_audio_filter_arguments()
-    parser.add_source_file_arguments()
-    parser.add_passthrough_arguments()
-
-    # Parse the arguments and do extra argument checks.
-    args = parser.parse_args()
-    qcnt = len([q for q in args.audio_quality if q is not None and q > 0])
-    if qcnt < 1:
-        parser.error('at least one positive audio bitrate must be specified')
-    # Note: ffmpeg will create a multi-track opus file.  VLC doesn't play it, but mplayer does.
-
-    if args.verbose >= 1:
-        print (args)
-
-    return args
 
 # --------------------------------------------------------------------------------------------------
 def get_ffmpeg_command(args: Namespace, segment: common.Segment, file_name: str) -> list[str]:

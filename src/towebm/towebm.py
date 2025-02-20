@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from argparse import Namespace
 
 from towebm import common
-from towebm.argparsers import DelimitedValueAction, ToolArgumentParser
+from towebm.argparsers import DelimitedValueAction, ConverterArgumentParser
 
 
 # --------------------------------------------------------------------------------------------------
@@ -52,13 +52,14 @@ def parse_args() -> Namespace:
     """
     Parses and returns the command line arguments.
     """
-    parser = ToolArgumentParser(
+    parser = ConverterArgumentParser(
         description='Converts videos to webm format (vp9+opus) using a two-pass ffmpeg encode.',
         fromfile_prefix_chars='@')
     parser.add_basic_arguments()
     parser.add_argument('-q', '--quality',
         help='video quality (lower is better, default 30)',
         action='store', type=int, default=30)
+    parser.add_audio_quality_argument(common.AudioFormats.OPUS)
     parser.add_argument('-b', '--audio-bitrate',
         help='audio bitrate in kbps (default 160); may be a colon-delimited list to include '
              'additional audio tracks from the source, with value 0 or blank used to skip a track',
