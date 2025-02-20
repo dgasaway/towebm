@@ -20,9 +20,7 @@ import subprocess
 import sys
 from argparse import ArgumentParser
 from tempfile import NamedTemporaryFile
-
-from ._version import __version__
-
+from towebm._version import __version__
 
 # --------------------------------------------------------------------------------------------------
 def main():

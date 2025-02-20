@@ -19,8 +19,7 @@ import os
 import subprocess
 import sys
 from argparse import ArgumentParser
-
-from .common import *
+from towebm.common import *
 
 
 # --------------------------------------------------------------------------------------------------

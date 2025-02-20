@@ -20,8 +20,7 @@ import sys
 import textwrap
 from collections import namedtuple
 from collections.abc import Sequence
-
-from ._version import __version__
+from towebm._version import __version__
 
 Segment = namedtuple('Segment', 'start, end, duration')
 
