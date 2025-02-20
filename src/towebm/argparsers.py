@@ -40,11 +40,14 @@ class DelimitedValueAction(Action):
         **kwargs):
 
         if nargs is not None:
-            raise ValueError('nargs not allowed')
+            msg = 'nargs not allowed'
+            raise ValueError(msg)
         if type is not None:
-            raise ValueError('use value_type')
+            msg = 'use value_type'
+            raise ValueError(msg)
         if choices is not None:
-            raise ValueError('use value_choices')
+            msg = 'use value_choices'
+            raise ValueError(msg)
         self._value_type = value_type
         self._delimiter = delimiter
         self._value_choices = value_choices
@@ -56,16 +59,16 @@ class DelimitedValueAction(Action):
         try:
             result = [None if s == '' else self._value_type(s)
                 for s in values.split(self._delimiter)]
-        except:
+        except ValueError as ex:
             type_name = self._value_type.__name__
-            msg = f"must be a list of {type_name} values delimited by '{self._delimiter}'"
-            raise ArgumentError(self, msg)
+            msg = f"values must be a list of {type_name} values delimited by '{self._delimiter}'"
+            raise ArgumentError(self, msg) from ex
 
         if result is not None and self._value_choices is not None:
             for bad_choice in [choice for choice in result
                 if choice is not None and choice not in self._value_choices]:
-                raise ArgumentError(self,
-                    f"invalid choice: '{bad_choice}' (choose from {self._value_choices})")
+                    msg = f"invalid choice: '{bad_choice}' (choose from {self._value_choices})"
+                    raise ArgumentError(self, msg)
         setattr(ns, self.dest, result)
 
 # --------------------------------------------------------------------------------------------------

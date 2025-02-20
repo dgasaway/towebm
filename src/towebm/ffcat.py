@@ -43,11 +43,12 @@ def main() -> int:
         if args.verbose >= 1:
             print(ffmpeg_args)
         subprocess.check_call(ffmpeg_args)
-    except subprocess.CalledProcessError as e:
-        rc = e.returncode
+    except subprocess.CalledProcessError as ex:
+        rc = ex.returncode
     finally:
         os.remove(file_list.name)
-        return rc
+
+    return rc
 
 # --------------------------------------------------------------------------------------------------
 def parse_args() -> Namespace:

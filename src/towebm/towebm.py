@@ -42,9 +42,9 @@ def main() -> int:
     for source_file in args.source_files:
         try:
             process_file(args, source_file)
-        except subprocess.CalledProcessError as e:
-            if rc == 0 or e.returncode > rc:
-                rc = e.returncode
+        except subprocess.CalledProcessError as ex:
+            if rc == 0 or ex.returncode > rc:
+                rc = ex.returncode
             print('Execution error, proceeding to next source file.')
 
     return rc
