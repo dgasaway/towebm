@@ -328,7 +328,7 @@ class AudioConverterArgumentParser(ConverterArgumentParser):
         outputs the specified format.
         """
         self.audio_format = audio_format
-        desc = f'Converts audio/video files to audio-only {audio_format.name} using ffmpeg'
+        desc = f'Converts audio/video files to audio-only {audio_format.codec_name} using ffmpeg'
         super().__init__(desc)
 
         # Options group
@@ -355,7 +355,10 @@ class AudioConverterArgumentParser(ConverterArgumentParser):
         parsed = super().parse_args(args, namespace)
 
         if len([q for q in parsed.audio_quality if q is not None and q > 0]) < 1:
-            msg = f'at least one positive audio {self.audio_format.quality_type.name} must be specified'
+            msg = (
+                f'at least one positive audio {self.audio_format.quality_type.name} must be '
+                f'specified'
+            )
             self.error(msg)
 
         return parsed
@@ -371,7 +374,7 @@ class VideoConverterArgumentParser(ConverterArgumentParser):
         s = ' or '.join(video_format.container_options)
         desc = (
             f'Converts video files to {video_format.codec_name} + '
-            f'{video_format.audio_format.name} in a {s} container using a '
+            f'{video_format.audio_format.codec_name} in a {s} container using a '
             f'{len(video_format.passes)}-pass ffmpeg encode.'
         )
         super().__init__(desc)

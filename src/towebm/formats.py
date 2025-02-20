@@ -32,7 +32,7 @@ class AudioFormat:
     """
     def __init__(
         self,
-        name: str,
+        codec_name: str,
         ffmpeg_codec: str,
         container: str,
         quality_type: AudioQualityType,
@@ -40,9 +40,9 @@ class AudioFormat:
         supports_multi_tracks: bool,
         requires_channel_layout_fix: bool):
 
-        self.name = name
+        self.codec_name = codec_name
         self.ffmpeg_codec = ffmpeg_codec
-        self.file_extension = container
+        self.container = container
         self.quality_type = quality_type
         self.default_quality = default_quality
         self.supports_multi_tracks = supports_multi_tracks
@@ -69,6 +69,7 @@ class VideoFormat:
         codec_name: str,
         container_options: list[str],
         ffmpeg_codec: str,
+        ffmpeg_output: str,
         passes: list[int],
         audio_format: AudioFormat,
         default_quality: float,
@@ -76,6 +77,7 @@ class VideoFormat:
 
         self.codec_name = codec_name
         self.ffmpeg_codec = ffmpeg_codec
+        self.ffmpeg_output = ffmpeg_output
         self.passes = passes
         self.container_options = container_options
         self.audio_format = audio_format
@@ -85,6 +87,6 @@ class VideoFormat:
 # --------------------------------------------------------------------------------------------------
 class VideoFormats:
     WEBM: Final[VideoFormat] = VideoFormat(
-        'VP9', ['webm', 'mkv'], 'libvpx-vp9', [1, 2], AudioFormats.OPUS, 30,
+        'VP9', ['webm', 'mkv'], 'libvpx-vp9', 'webm', [1, 2], AudioFormats.OPUS, 30,
         'video quality (lower is better, default {0})'
     )

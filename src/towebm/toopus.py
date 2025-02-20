@@ -12,84 +12,14 @@
 #
 # You should have received a copy of the GNU General Public License along with this program; if not,
 # see <http://www.gnu.org/licenses>.
-from __future__ import annotations
-
-import os
-import subprocess
 import sys
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from argparse import Namespace
 
-from towebm import common
-from towebm.argparsers import AudioConverterArgumentParser
+from towebm.converters import AudioConverter
 from towebm.formats import AudioFormats
-
 
 # --------------------------------------------------------------------------------------------------
 def main() -> int:
-    """
-    Executes the operations indicated by the command line arguments.
-    """
-    args = AudioConverterArgumentParser(AudioFormats.OPUS).parse_args()
-    if args.verbose >= 1:
-        print (args)
-
-    # We'll treat each input file as it's own job, and continue to the next if there is a problem.
-    rc = 0
-    for source_file in args.source_files:
-        try:
-            process_file(args, source_file)
-        except subprocess.CalledProcessError as ex:
-            if rc == 0 or ex.returncode > rc:
-                rc = ex.returncode
-            print('Execution error, proceeding to next source file.')
-
-    return rc
-
-# --------------------------------------------------------------------------------------------------
-def get_ffmpeg_command(args: Namespace, segment: common.Segment, file_name: str) -> list[str]:
-    """
-    Returns the arguments to run ffmpeg for a single output file.
-    """
-    title = os.path.splitext(os.path.basename(file_name))[0]
-
-    result = ['ffmpeg', '-nostdin', '-hide_banner']
-    result += common.get_segment_arguments(segment)
-    result += [
-        '-i', file_name,
-        '-vn',
-        '-c:a', 'libopus'
-        ]
-    result += common.get_audio_filter_args(args, segment)
-    result += common.get_audio_quality_args(args)
-    result += common.get_audio_metadata_map_args(args)
-    result += args.passthrough_args
-    result += [common.get_safe_filename(title + '.opus', args.always_number)]
-
-    return result
-
-# --------------------------------------------------------------------------------------------------
-def process_segment(args: Namespace, segment: common.Segment, file_name: str) -> None:
-    """
-    Executes the requested action for a single output file.
-    """
-    cmd = get_ffmpeg_command(args, segment, file_name)
-    if args.pretend or args.verbose >= 1:
-        print(cmd)
-    if not args.pretend:
-        subprocess.check_call(cmd)
-
-# --------------------------------------------------------------------------------------------------
-def process_file(args: Namespace, file_name: str) -> None:
-    """
-    Executes the requested action for a single input file.
-    """
-    if args.segments is not None:
-        for segment in args.segments:
-            process_segment(args, common.Segment(segment[0], segment[1], None), file_name)
-    else:
-        process_segment(args, common.Segment(args.start, args.end, args.duration), file_name)
+    return AudioConverter(AudioFormats.OPUS).main()
 
 # --------------------------------------------------------------------------------------------------
 if __name__ == "__main__":
