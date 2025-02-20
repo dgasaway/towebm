@@ -18,14 +18,19 @@ from __future__ import annotations
 import collections.abc
 import os
 import re
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 if TYPE_CHECKING:
     from argparse import Namespace
-from collections import namedtuple
 
 # --------------------------------------------------------------------------------------------------
-Segment = namedtuple('Segment', 'start, end, duration')
+class Segment(NamedTuple):
+    """
+    Represents a segment of the input file bound by ffmpeg duration strings.
+    """
+    start: str | None
+    end: str | None
+    duration: str | None
 
 # --------------------------------------------------------------------------------------------------
 def get_safe_filename(filename: str, always_number: bool) -> str:
