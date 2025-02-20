@@ -167,7 +167,7 @@ class ConverterArgumentParser(ExtraArgumentParser):
             dest='audio_quality',
             metavar=format.quality_type.name,
             value_type=value_type,
-            default=format.default_quality)
+            default=[format.default_quality])
 
     # ----------------------------------------------------------------------------------------------
     def add_timecode_arguments(self, group: _ArgumentGroup | None=None) -> None:

@@ -110,10 +110,10 @@ def parse_args() -> Namespace:
     fgroup.add_argument('-g', '--gamma',
         help='gramma correction (default 1.0; no correction)',
         action='store', type=float, default=1.0)
-    fgroup.add_argument('-f', '--filter',
+    fgroup.add_argument('-vf', '--video-filter',
         help='custom video filter, similar to -vf ffmpeg argument',
         action='append')
-    fgroup.add_argument('-a', '--audio-filter',
+    fgroup.add_argument('-af', '--audio-filter',
         help='custom audio filter, similar to -af ffmpeg argument',
         action='append')
     fgroup.add_argument('--volume',

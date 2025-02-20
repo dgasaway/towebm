@@ -136,8 +136,8 @@ def get_video_filter_args(args: Namespace, segment: Segment) -> list[str]:
             duration = duration_to_seconds(segment.end) - start
         filters.append(f'fade=t=out:st={duration - args.fade_out}:d={args.fade_out}')
 
-    if args.filter is not None:
-        filters += args.filter
+    if args.video_filter is not None:
+        filters += args.video_filter
 
     if len(filters) == 0:
         filters = ['copy']
