@@ -67,8 +67,7 @@ def parse_args():
     qcnt = len([q for q in args.audio_quality if q is not None and q > 0])
     if qcnt < 1:
         parser.error('at least one positive audio bitrate must be specified')
-    elif qcnt > 1:
-        parser.error('only one non-zero audio bitrate may be specified')
+    # Note: ffmpeg will create a multi-track opus file.  VLC doesn't play it, but mplayer does.
 
     if args.verbose >= 1:
         print (args)
