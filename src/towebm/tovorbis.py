@@ -15,14 +15,22 @@
 # You should have received a copy of the GNU General Public License along with this program; if not,
 # see <http://www.gnu.org/licenses>.
 
+from __future__ import annotations
+
 import os
 import subprocess
 import sys
-from towebm.argparsers import ToolArgumentParser, DelimitedValueAction
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from argparse import Namespace
+
 from towebm import common
+from towebm.argparsers import DelimitedValueAction, ToolArgumentParser
+
 
 # --------------------------------------------------------------------------------------------------
-def main():
+def main() -> int:
     """
     Executes the operations indicated by the command line arguments.
     """
@@ -41,7 +49,7 @@ def main():
     return rc
 
 # --------------------------------------------------------------------------------------------------
-def parse_args():
+def parse_args() -> Namespace:
     """
     Parses and returns the command line arguments.
     """
@@ -74,7 +82,7 @@ def parse_args():
     return args
 
 # --------------------------------------------------------------------------------------------------
-def get_ffmpeg_command(args, segment, file_name):
+def get_ffmpeg_command(args: Namespace, segment: common.Segment, file_name: str) -> list[str]:
     """
     Returns the arguments to run ffmpeg for a single output file.
     """
@@ -96,7 +104,7 @@ def get_ffmpeg_command(args, segment, file_name):
     return result
 
 # --------------------------------------------------------------------------------------------------
-def process_segment(args, segment, file_name):
+def process_segment(args: Namespace, segment: common.Segment, file_name: str) -> None:
     """
     Executes the requested action for a single output file.
     """
@@ -107,7 +115,7 @@ def process_segment(args, segment, file_name):
         subprocess.check_call(cmd)
 
 # --------------------------------------------------------------------------------------------------
-def process_file(args, file_name):
+def process_file(args: Namespace, file_name: str) -> None:
     """
     Executes the requested action for a single input file.
     """

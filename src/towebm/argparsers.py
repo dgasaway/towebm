@@ -13,11 +13,15 @@
 # You should have received a copy of the GNU General Public License along with this program; if not,
 # see <http://www.gnu.org/licenses>.
 
+from __future__ import annotations
+
 import os
 import sys
-from typing import Sequence, Type
-from argparse import ArgumentParser, _ArgumentGroup, Namespace, Action, ArgumentError
+from argparse import Action, ArgumentError, ArgumentParser, Namespace, _ArgumentGroup
+from typing import Any, Sequence
+
 from towebm._version import __version__
+
 
 # --------------------------------------------------------------------------------------------------
 class DelimitedValueAction(Action):
@@ -27,9 +31,9 @@ class DelimitedValueAction(Action):
     def __init__(self,
         option_strings: Sequence[str],
         dest: str,
-        value_type: Type=str,
+        value_type: type=str,
         delimiter: str=':',
-        value_choices: Sequence=None,
+        value_choices: Sequence[Any] | None=None,
         nargs=None,
         type=None,
         choices=None,
@@ -53,8 +57,9 @@ class DelimitedValueAction(Action):
             result = [None if s == '' else self._value_type(s)
                 for s in values.split(self._delimiter)]
         except:
-            raise ArgumentError(self,
-                f"must be a list of {self._value_type.__name__} values delimited by '{self._delimiter}'")
+            type_name = self._value_type.__name__
+            msg = f"must be a list of {type_name} values delimited by '{self._delimiter}'"
+            raise ArgumentError(self, msg)
 
         if result is not None and self._value_choices is not None:
             for bad_choice in [choice for choice in result
@@ -70,10 +75,10 @@ class ExtraArgumentParser(ArgumentParser):
     """
     def parse_args(
         self,
-        args: Sequence[str]=None,
+        args: Sequence[str] | None=None,
         namespace=None,
         marker: str='--',
-        dest: str=None) -> Namespace:
+        dest: str | None=None) -> Namespace:
         """
         Convert argument strings to objects and assign them as attributes of the namespace.  Assign
         arguments after the specified marker to the specified destination.  Return the populated
@@ -85,7 +90,7 @@ class ExtraArgumentParser(ArgumentParser):
 
         # Use default if there is no marker present.
         largs = sys.argv[1:] if args is None else args
-        if largs is None or not marker in largs:
+        if largs is None or marker not in largs:
             return super().parse_args(None, namespace)
 
         # Grab all the arguments after the marker arg.
@@ -178,7 +183,7 @@ class ToolArgumentParser(ExtraArgumentParser):
         Add a channel layout fix argument.
         """
         self.add_argument('--channel-layout-fix',
-            help=f'apply a channel layout fix to 4.1, 5.0, 5.1(side) audio sources to output a '
+            help='apply a channel layout fix to 4.1, 5.0, 5.1(side) audio sources to output a '
                 'compatible 5.1(rear) layout; may be a colon-delimited list to apply the fix to '
                 'multiple audio tracks from the source; choices are 4.1, 5.0, 5.1; 0 or blank '
                 'apply no fix',
@@ -186,7 +191,7 @@ class ToolArgumentParser(ExtraArgumentParser):
             value_choices=['0', '4.1', '5.0', '5.1'], default=['0'])
 
     # ----------------------------------------------------------------------------------------------
-    def add_source_file_arguments(self, help: str=None) -> None:
+    def add_source_file_arguments(self, help: str | None=None) -> None:
         """
         Add a positional argument that requires one or more source files.
         """
@@ -251,7 +256,7 @@ class ToolArgumentParser(ExtraArgumentParser):
                 self.error('invalid source file: ' + source_file)
 
     # ----------------------------------------------------------------------------------------------
-    def parse_args(self, args: Sequence[str]=None, namespace=None) -> Namespace:
+    def parse_args(self, args: Sequence[str] | None=None, namespace=None) -> Namespace:
         """
         Convert argument strings to objects and assign them as attributes of the namespace.  Return
         the populated namespace.

@@ -15,15 +15,23 @@
 # You should have received a copy of the GNU General Public License along with this program; if not,
 # see <http://www.gnu.org/licenses>.
 
+from __future__ import annotations
+
 import os
 import subprocess
 import sys
 from datetime import datetime
-from towebm.argparsers import ToolArgumentParser, DelimitedValueAction
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from argparse import Namespace
+
 from towebm import common
+from towebm.argparsers import DelimitedValueAction, ToolArgumentParser
+
 
 # --------------------------------------------------------------------------------------------------
-def main():
+def main() -> int:
     """
     Executes the operations indicated by the command line arguments.
     """
@@ -42,7 +50,7 @@ def main():
     return rc
 
 # --------------------------------------------------------------------------------------------------
-def parse_args():
+def parse_args() -> Namespace:
     """
     Parses and returns the command line arguments.
     """
@@ -133,7 +141,7 @@ def parse_args():
     return args
 
 # --------------------------------------------------------------------------------------------------
-def get_pass1_command(args, segment, file_name):
+def get_pass1_command(args: Namespace, segment: common.Segment, file_name: str) -> list[str]:
     """
     Returns the arguments to run ffmpeg for pass one of a single output file.
     """
@@ -168,7 +176,7 @@ def get_pass1_command(args, segment, file_name):
     return result
 
 # --------------------------------------------------------------------------------------------------
-def get_pass2_command(args, segment, file_name):
+def get_pass2_command(args: Namespace, segment: common.Segment, file_name: str) -> list[str]:
     """
     Returns the arguments to run ffmpeg for pass two of a single output file.
     """
@@ -209,7 +217,7 @@ def get_pass2_command(args, segment, file_name):
     return result
 
 # --------------------------------------------------------------------------------------------------
-def get_log_command(args, file_name):
+def get_log_command(args: Namespace, file_name: str) -> list[str]:
     """
     Returns the arguments to either delete or rename the pass one log file, as requested by the
     user in the script arguemnts.
@@ -223,7 +231,7 @@ def get_log_command(args, file_name):
                 f'{title}_{datetime.now():%Y%m%d-%H%M%S}.log']
 
 # --------------------------------------------------------------------------------------------------
-def process_segment(args, segment, file_name):
+def process_segment(args: Namespace, segment: common.Segment, file_name: str) -> None:
     """
     Executes the requested action for a single output file.
     """
@@ -246,7 +254,7 @@ def process_segment(args, segment, file_name):
             subprocess.check_call(logcmd)
 
 # --------------------------------------------------------------------------------------------------
-def process_file(args, file_name):
+def process_file(args: Namespace, file_name: str) -> None:
     """
     Executes the requested action for a single input file.
     """

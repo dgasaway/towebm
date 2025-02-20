@@ -15,15 +15,19 @@
 # You should have received a copy of the GNU General Public License along with this program; if not,
 # see <http://www.gnu.org/licenses>.
 
+from __future__ import annotations
+
 import os
 import subprocess
 import sys
-from argparse import ArgumentParser
+from argparse import ArgumentParser, Namespace
 from tempfile import NamedTemporaryFile
+
 from towebm._version import __version__
 
+
 # --------------------------------------------------------------------------------------------------
-def main():
+def main() -> int:
     """
     Executes the operations indicated by the command line arguments.
     """
@@ -40,13 +44,13 @@ def main():
             print(ffmpeg_args)
         subprocess.check_call(ffmpeg_args)
     except subprocess.CalledProcessError as e:
-        rc = e.returncode        
+        rc = e.returncode
     finally:
         os.remove(file_list.name)
         return rc
 
 # --------------------------------------------------------------------------------------------------
-def parse_args():
+def parse_args() -> Namespace:
     """
     Parses and returns the command line arguments.
     """
@@ -67,7 +71,7 @@ def parse_args():
     if args.verbose >= 1:
         print(args)
 
-    return args;
+    return args
 
 # --------------------------------------------------------------------------------------------------
 if __name__ == "__main__":

@@ -13,16 +13,22 @@
 # You should have received a copy of the GNU General Public License along with this program; if not,
 # see <http://www.gnu.org/licenses>.
 
+from __future__ import annotations
+
+import collections.abc
 import os
 import re
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from argparse import Namespace
 from collections import namedtuple
-from collections.abc import Sequence
 
 # --------------------------------------------------------------------------------------------------
 Segment = namedtuple('Segment', 'start, end, duration')
 
 # --------------------------------------------------------------------------------------------------
-def get_safe_filename(filename, always_number):
+def get_safe_filename(filename: str, always_number: bool) -> str:
     """
     Returns the source file name if no file exists with the given name and 'always_number' is false;
     returns the source file name with an understore and two-digit sequence number appended to make
@@ -40,7 +46,7 @@ def get_safe_filename(filename, always_number):
         return filename
 
 # --------------------------------------------------------------------------------------------------
-def duration_to_seconds(duration):
+def duration_to_seconds(duration: str) -> float:
     """
     Converts the specified ffmpeg duration string into a decimal representing the number of seconds
     represented by the duration string; None if the string is not parsable.
@@ -68,7 +74,7 @@ def duration_to_seconds(duration):
         return None
 
 # --------------------------------------------------------------------------------------------------
-def get_video_filter_args(args, segment):
+def get_video_filter_args(args: Namespace, segment: Segment) -> list[str]:
     """
     Returns a list of ffmpeg arguments that apply all of the selected video filters requested in the
     specified script arguments, or an empty list if none apply.
@@ -136,7 +142,7 @@ def get_video_filter_args(args, segment):
     return ['-filter_complex', '[0:v]' + ','.join(filters)]
 
 # --------------------------------------------------------------------------------------------------
-def get_audio_filters(args, segment):
+def get_audio_filters(args: Namespace, segment: Segment) -> list[str]:
     """
     Returns a list of audio filters, one element per standard filter or user argument.
     """
@@ -166,7 +172,7 @@ def get_audio_filters(args, segment):
     return filters
 
 # --------------------------------------------------------------------------------------------------
-def get_audio_filter_args(args, segment):
+def get_audio_filter_args(args: Namespace, segment: Segment) -> list[str]:
     """
     Returns a list of ffmpeg arguments that apply all of the selected audio filters requested in the
     specified script arguments, or an empty list if none apply.
@@ -203,7 +209,7 @@ def get_audio_filter_args(args, segment):
         return ['-filter_complex', ';'.join(per_track_filters)]
 
 # --------------------------------------------------------------------------------------------------
-def get_segment_arguments(segment):
+def get_segment_arguments(segment: Segment) -> list[str]:
     """
     Returns a list of ffmepg arguments to select a portion of the input as requested by the user in
     the specified segment, or an empty list if none apply.
@@ -218,12 +224,11 @@ def get_segment_arguments(segment):
     return result
 
 # --------------------------------------------------------------------------------------------------
-def get_audio_quality_arg(quality, stream_index = None):
+def get_audio_quality_arg(quality: float, stream_index: int | None=None) -> list[str]:
     """
     Returns a list of ffmpeg arguments for a specified audio quality and optional output stream
     index.
     """
-    result = []
     if isinstance(quality, float):
         if stream_index is None:
             arg = '-q:a'
@@ -238,7 +243,7 @@ def get_audio_quality_arg(quality, stream_index = None):
         return [arg, f'{quality}k']
 
 # --------------------------------------------------------------------------------------------------
-def get_audio_quality_args(args):
+def get_audio_quality_args(args: Namespace) -> list[str]:
     """
     Returns a list of one or more sets of ffmpeg audio quality arguments based on the audio quality
     arguments in the specified script arguments.
@@ -251,7 +256,7 @@ def get_audio_quality_args(args):
     return result
 
 # --------------------------------------------------------------------------------------------------
-def get_audio_metadata_map_arg(output_index=0, input_index=None):
+def get_audio_metadata_map_arg(output_index: int=0, input_index: int | None=None) -> list[str]:
     """
     Returns a list two ffmpeg arguments for copying audio stream metadata from a specified source
     index to a specified output stream index.
@@ -263,12 +268,12 @@ def get_audio_metadata_map_arg(output_index=0, input_index=None):
         return [arg, f'0:s:a:{input_index}']
 
 # --------------------------------------------------------------------------------------------------
-def get_audio_metadata_map_args(args):
+def get_audio_metadata_map_args(args: Namespace) -> list[str]:
     """
     Returns a list of ffmpeg arguments to copy audio metadata from the input streams to the matching
     output streams.
     """
-    if isinstance(args.audio_quality, Sequence):
+    if isinstance(args.audio_quality, collections.abc.Sequence):
         # We need both the input and output index to create the map.
         result = []
         output_index = 0
