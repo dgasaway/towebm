@@ -76,7 +76,7 @@ class DelimitedValueAction(argparse.Action):
 # --------------------------------------------------------------------------------------------------
 def add_basic_arguments(parser):
     """
-    Adds basic arguments that apply to all scripts to a parser.
+    Adds basic arguments that apply to all conversion scripts to the specified parser.
     """
     parser.add_argument('--version', action='version', version='%(prog)s ' + __version__)
     parser.add_argument('-#', '--always-number',
@@ -92,7 +92,7 @@ def add_basic_arguments(parser):
 # --------------------------------------------------------------------------------------------------
 def add_timecode_arguments(parser):
     """
-    Adds timecode arguments to a parser.
+    Adds timecode arguments to the specified parser.
     """
     sgroup = parser.add_argument_group('source segment arguments',
         'A single segment or multiple segments of a source file may be encoded using the '
@@ -119,7 +119,7 @@ def add_timecode_arguments(parser):
 # --------------------------------------------------------------------------------------------------
 def add_audio_filter_arguments(parser):
     """
-    Adds filter arguments that apply to audio-only encodes to a parser.
+    Adds filter arguments that apply to audio-only encodes to the specified parser.
     """
     fgroup = parser.add_argument_group('filter arguments')
     fgroup.add_argument('--fade-in',
@@ -139,7 +139,7 @@ def add_audio_filter_arguments(parser):
 # --------------------------------------------------------------------------------------------------
 def add_passthrough_arguments(parser):
     """
-    Adds passthrough argument help to a parser.
+    Adds passthrough argument help to the specified parser.
     """
     group = parser.add_argument_group('passthrough arguments',
         'Additional arguments can be passed to ffmpeg as-is before the output file name by adding '
@@ -150,8 +150,8 @@ def add_passthrough_arguments(parser):
 # --------------------------------------------------------------------------------------------------
 def check_timecode_arguments(parser, args):
     """
-    Raises a parser error if args contains an invalid combination of --start, --end, --duration,
-    and --segment.
+    Raises a parser error if the specified args contain an invalid combination of --start, --end,
+    --duration, and --segment.
     """
     # Check for invalid combinations.
     if args.duration is not None and args.end is not None:
@@ -166,7 +166,7 @@ def check_timecode_arguments(parser, args):
 # --------------------------------------------------------------------------------------------------
 def check_source_files_exist(parser, args):
     """
-    Raises a parser error if args contains any source files that do not exist.
+    Raises a parser error if the specified args contain any source files that do not exist.
     """
     for source_file in args.source_files:
         if not os.path.exists(source_file):
@@ -193,7 +193,7 @@ def get_safe_filename(filename, always_number):
 # --------------------------------------------------------------------------------------------------
 def duration_to_seconds(duration):
     """
-    Converts an ffmpeg duration string into a decimal representing the number of seconds
+    Converts the specified ffmpeg duration string into a decimal representing the number of seconds
     represented by the duration string; None if the string is not parsable.
     """
     pattern = r'^((((?P<hms_grp1>\d*):)?((?P<hms_grp2>\d*):)?((?P<hms_secs>\d+([.]\d*)?)))|' \
@@ -222,7 +222,7 @@ def duration_to_seconds(duration):
 def get_video_filter_args(args, segment):
     """
     Returns a list of ffmpeg arguments that apply all of the selected video filters requested in the
-    script arguments, or an empty list if none apply.
+    specified script arguments, or an empty list if none apply.
     """
     filters = []
 
@@ -289,7 +289,7 @@ def get_video_filter_args(args, segment):
 # --------------------------------------------------------------------------------------------------
 def get_audio_filters(args, segment):
     """
-    Returns a lits of audio filters, one element per standard filter or user argument.
+    Returns a list of audio filters, one element per standard filter or user argument.
     """
     filters = []
 
@@ -320,7 +320,7 @@ def get_audio_filters(args, segment):
 def get_audio_filter_args(args, segment):
     """
     Returns a list of ffmpeg arguments that apply all of the selected audio filters requested in the
-    script arguments, or an empty list if none apply.
+    specified script arguments, or an empty list if none apply.
     """
     filters = get_audio_filters(args, segment)
     per_track_filters = []
@@ -357,7 +357,7 @@ def get_audio_filter_args(args, segment):
 def get_segment_arguments(segment):
     """
     Returns a list of ffmepg arguments to select a portion of the input as requested by the user in
-    the script arguments, or an empty list if none apply.
+    the specified segment, or an empty list if none apply.
     """
     result = []
     if segment.start is not None:
@@ -371,7 +371,8 @@ def get_segment_arguments(segment):
 # --------------------------------------------------------------------------------------------------
 def get_audio_quality_arg(quality, stream_index = None):
     """
-    Returns a list two ffmpeg arguments for a given audio quality and optional output stream index.
+    Returns a list of ffmpeg arguments for a specified audio quality and optional output stream
+    index.
     """
     result = []
     if isinstance(quality, float):
@@ -390,8 +391,8 @@ def get_audio_quality_arg(quality, stream_index = None):
 # --------------------------------------------------------------------------------------------------
 def get_audio_quality_args(args):
     """
-    Returns a list of one or more sets of ffmpeg audio quality arguments based on the script audio
-    quality arguments.
+    Returns a list of one or more sets of ffmpeg audio quality arguments based on the audio quality
+    arguments in the specified script arguments.
     """
     # We only output a quality for non-zero values, and since the stream index is the output index,
     # we can use the index of a filtered list.
@@ -403,8 +404,8 @@ def get_audio_quality_args(args):
 # --------------------------------------------------------------------------------------------------
 def get_audio_metadata_map_arg(output_index=0, input_index=None):
     """
-    Returns a list two ffmpeg arguments for copying audio stream metadata from a source stream to an
-    output stream.
+    Returns a list two ffmpeg arguments for copying audio stream metadata from a specified source
+    index to a specified output stream index.
     """
     arg = f'-map_metadata:s:a:{output_index}'
     if input_index is None:
@@ -431,7 +432,7 @@ def get_audio_metadata_map_args(args):
         return get_audio_metadata_map_arg()
 
 # --------------------------------------------------------------------------------------------------
-def parse_args(parser):
+def parse_args_with_passthrough(parser):
     """
     Parses the command arguments; anything after a '--' argument is taken as a passthrough argument,
     while anything before is parsed using the given argparse parser.  The passthrough arguments are
@@ -444,4 +445,3 @@ def parse_args(parser):
     args = parser.parse_args(argv)
     args.passthrough_args = pargs
     return args
-

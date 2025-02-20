@@ -25,7 +25,26 @@ from towebm.common import *
 # --------------------------------------------------------------------------------------------------
 def main():
     """
-    Parses command line argument and initiates main operation.
+    Executes the operations indicated by the command line arguments.
+    """
+    args = parse_args()
+
+    # We'll treat each input file as it's own job, and continue to the next if there is a problem.
+    rc = 0
+    for source_file in args.source_files:
+        try:
+            process_file(args, source_file)
+        except subprocess.CalledProcessError as e:
+            if rc == 0 or e.returncode > rc:
+                rc = e.returncode
+            print('Execution error, proceeding to next source file.')
+
+    return rc
+
+# --------------------------------------------------------------------------------------------------
+def parse_args():
+    """
+    Parses and returns the command line arguments.
     """
     parser = ArgumentParser(
         description='Converts audio/video files to audio-only opus using ffmpeg.',
@@ -58,7 +77,7 @@ def main():
         action='store', metavar='source_file', nargs='+')
 
     # Parse the arguments and do extra argument checks.
-    args = parse_args(parser)
+    args = parse_args_with_passthrough(parser)
     if args.segments is not None and len(args.segments) > 1:
         args.always_number = True
     qcnt = len([q for q in args.audio_quality if q is not None and q > 0])
@@ -73,17 +92,6 @@ def main():
     check_timecode_arguments(parser, args)
     check_source_files_exist(parser, args)
 
-    # We'll treat each input file as it's own job, and continue to the next if there is a problem.
-    rc = 0
-    for source_file in args.source_files:
-        try:
-            process_file(args, source_file)
-        except subprocess.CalledProcessError as e:
-            if rc == 0 or e.returncode > rc:
-                rc = e.returncode
-            print('Execution error, proceeding to next source file.')
-
-    return rc
 
 # --------------------------------------------------------------------------------------------------
 def get_ffmpeg_command(args, segment, file_name):

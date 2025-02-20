@@ -24,6 +24,28 @@ from towebm._version import __version__
 
 # --------------------------------------------------------------------------------------------------
 def main():
+    """
+    Executes the operations indicated by the command line arguments.
+    """
+    args = parse_args()
+    file_list = NamedTemporaryFile(mode='wt', dir=os.getcwd(), delete=False)
+    try:
+        for source_file in args.source_files:
+            file_list.write("file '{0}'\n".format(source_file.replace("'", r"'\''")))
+        file_list.close()
+        ffmpeg_args = ['ffmpeg', '-f', 'concat', '-safe', '0', '-i', file_list.name, '-c', 'copy',
+                       args.output_file]
+        if args.verbose >= 1:
+            print(ffmpeg_args)
+        subprocess.check_call(ffmpeg_args)
+    finally:
+        os.remove(file_list.name)
+
+# --------------------------------------------------------------------------------------------------
+def parse_args():
+    """
+    Parses and returns the command line arguments.
+    """
     parser = ArgumentParser(
         description='Concatenates media files using the ffmpeg concat demuxer.',
         fromfile_prefix_chars='@')
@@ -41,18 +63,7 @@ def main():
     if args.verbose >= 1:
         print(args)
 
-    file_list = NamedTemporaryFile(mode='wt', dir=os.getcwd(), delete=False)
-    try:
-        for source_file in args.source_files:
-            file_list.write("file '{0}'\n".format(source_file.replace("'", r"'\''")))
-        file_list.close()
-        ffmpeg_args = ['ffmpeg', '-f', 'concat', '-safe', '0', '-i', file_list.name, '-c', 'copy',
-                       args.output_file]
-        if args.verbose >= 1:
-            print(ffmpeg_args)
-        subprocess.check_call(ffmpeg_args)
-    finally:
-        os.remove(file_list.name)
+    return args;
 
 # --------------------------------------------------------------------------------------------------
 if __name__ == "__main__":
