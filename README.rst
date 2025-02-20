@@ -5,11 +5,12 @@ Introduction
 with VP9 format video and Opus format audio using the ``ffmpeg`` tool.
 Arguments are available for basic edit operations - crop, scale, cut, 
 grayscale, and deinterlace - as well as for passing arbitrary ffmpeg video
-or audio filters.  ``toopus`` and ``tovorbis`` will transcode audio from
-video or audio files to Opus and Vorbis format files, respectively, with
-many of the same features as ``towebm``.  Finally, ``ffcat`` will
-concatenate files using the ``concat`` demuxer, intended for joining multiple
-output segments produced by ``towebm`` from a single input file.
+or audio filters.  ``toopus``, ``tovorbis``, and ``toflac`` will transcode
+audio from video or audio files to Opus, Vorbis, and FLAC format files,
+respectively, with many of the same features as ``towebm``.  Finally,
+``ffcat`` will concatenate files using the ``concat`` demuxer, intended for
+joining multiple output segments produced by ``towebm`` from a single input
+file.
 
 Usage
 =====
@@ -32,7 +33,7 @@ respectively::
 Transcode a source MKV video with a crop to all sides and an aspect-correct
 scale to 706 horizontal resolution::
     
-    towebm -x 260 260 -y 16 4 -f "scale=h=706:w=-1" Calif*.mkv
+    towebm -x 260 260 -y 16 4 -vf "scale=h=706:w=-1" Calif*.mkv
 
 Transcode two minutes of a video, starting ten seconds from the start, using
 three different available options::
@@ -58,7 +59,17 @@ if different filters need to be applied to the different segments)::
 Join the output of the previous example into a single file::
 
     ffcat input_*.webm final.webm
-    
+
+Transcode a source MKV video with three audio tracks, the first of which is a
+5.1(side) surround-sound track:
+
+    towebm input.mkv --fix-channel-layout 5.1:0:0 -b 256:128:128
+
+Same as the previous example, but excluding the first audio track from the
+output:
+
+    towebm input.mkv b 0:128:128
+
 Transcode a segment of a video with a one second fade-in and half-second
 fade-out::
 
@@ -72,7 +83,12 @@ audio::
 Transcode a portion of a FLAC audio file to vorbis, quality 4::
 
     tovorbis -q 4 --start 1:00 --end 2:00 input.flac
-    
+
+Transcode the second audio track of a source video file to FLAC, compression
+level 6::
+
+    toflac -c 0:6 input.avi
+
 Installation
 ============
 
