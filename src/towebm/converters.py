@@ -443,16 +443,11 @@ class VideoConverter(Converter):
         result += [
             '-i', file_name,
             '-c:v', self.video_format.ffmpeg_codec,
-            '-crf', str(self.args.quality),
+            self.video_format.video_quality_arg, str(self.args.quality),
             '-b:v', '0',
-            '-tile-columns', '2',
-            '-row-mt', '1',
-            '-auto-alt-ref', '1',
-            '-lag-in-frames', '25',
-            '-threads', '8',
-            '-cpu-used', '4',
-            '-pix_fmt', 'yuv420p'
-            ]
+        ]
+        result += self.video_format.codec_args
+        result += self.video_format.pass1_codec_args
         result += self.get_video_filter_args(segment)
         result += [
             '-an',
@@ -460,7 +455,7 @@ class VideoConverter(Converter):
             '-pass', '1',
             '-passlogfile', title,
             '-y'
-            ]
+        ]
         result += self.args.passthrough_args
         result.append('/dev/null')
 
@@ -478,16 +473,11 @@ class VideoConverter(Converter):
         result += [
             '-i', file_name,
             '-c:v', self.video_format.ffmpeg_codec,
-            '-crf', str(self.args.quality),
+            self.video_format.video_quality_arg, str(self.args.quality),
             '-b:v', '0',
-            '-tile-columns', '2',
-            '-row-mt', '1',
-            '-auto-alt-ref', '1',
-            '-lag-in-frames', '25',
-            '-threads', '8',
-            '-cpu-used', '2',
-            '-pix_fmt', 'yuv420p'
-            ]
+        ]
+        result += self.video_format.codec_args
+        result += self.video_format.pass2_codec_args
         result += self.get_video_filter_args(segment)
         if len([q for q in self.args.audio_quality if q is not None and q > 0]) > 0:
             result += ['-c:a', 'libopus']
@@ -500,7 +490,7 @@ class VideoConverter(Converter):
             '-pass', '2',
             '-passlogfile', title,
             '-metadata', f'title={title}'
-            ]
+        ]
         result += self.get_audio_metadata_map_args()
         result += self.args.passthrough_args
 

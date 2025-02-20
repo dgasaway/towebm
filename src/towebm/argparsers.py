@@ -414,9 +414,9 @@ class VideoConverterArgumentParser(ConverterArgumentParser):
     # ----------------------------------------------------------------------------------------------
     def add_video_quality_argument(self, group: _ArgumentGroup | None=None):
         parent = self if group is None else group
+        s = f'{self.video_format.video_quality_help} (default {self.video_format.default_quality})'
         parent.add_argument('-q', '--quality',
-            help=self.video_format.quality_help,
-            action='store', type=int, default=self.video_format.default_quality)
+            help=s, action='store', type=int, default=self.video_format.default_quality)
 
     # ----------------------------------------------------------------------------------------------
     def add_video_filter_arguments(self, group: _ArgumentGroup | None=None):

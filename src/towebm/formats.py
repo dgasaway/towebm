@@ -73,7 +73,11 @@ class VideoFormat:
         passes: list[int],
         audio_format: AudioFormat,
         default_quality: float,
-        quality_help: str):
+        video_quality_help: str,
+        video_quality_arg: str,
+        codec_args: list[str],
+        pass1_codec_args: list[str],
+        pass2_codec_args: list[str]):
 
         self.codec_name = codec_name
         self.ffmpeg_codec = ffmpeg_codec
@@ -82,11 +86,27 @@ class VideoFormat:
         self.container_options = container_options
         self.audio_format = audio_format
         self.default_quality = default_quality
-        self.quality_help = quality_help.format(default_quality)
+        self.video_quality_help = video_quality_help
+        self.video_quality_arg = video_quality_arg
+        self.codec_args = codec_args
+        self.pass1_codec_args = pass1_codec_args
+        self.pass2_codec_args = pass2_codec_args
 
 # --------------------------------------------------------------------------------------------------
 class VideoFormats:
     WEBM: Final[VideoFormat] = VideoFormat(
         'VP9', ['webm', 'mkv'], 'libvpx-vp9', 'webm', [1, 2], AudioFormats.OPUS, 30,
-        'video quality (lower is better, default {0})'
+        'video quality, lower is better',
+        '-crf',
+        codec_args=[
+            '-b:v', '0',
+            '-tile-columns', '2',
+            '-row-mt', '1',
+            '-auto-alt-ref', '1',
+            '-lag-in-frames', '25',
+            '-threads', '8',
+            '-pix_fmt', 'yuv420p'
+        ],
+        pass1_codec_args=[ '-cpu-used', '4' ],
+        pass2_codec_args=[ '-cpu-used', '2' ]
     )
