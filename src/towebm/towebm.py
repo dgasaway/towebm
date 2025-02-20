@@ -25,7 +25,8 @@ if TYPE_CHECKING:
     from argparse import Namespace
 
 from towebm import common
-from towebm.argparsers import DelimitedValueAction, ConverterArgumentParser
+from towebm.argparsers import ConverterArgumentParser
+from towebm.audioformats import OPUS
 
 
 # --------------------------------------------------------------------------------------------------
@@ -59,12 +60,7 @@ def parse_args() -> Namespace:
     parser.add_argument('-q', '--quality',
         help='video quality (lower is better, default 30)',
         action='store', type=int, default=30)
-    parser.add_audio_quality_argument(common.AudioFormats.OPUS)
-    parser.add_argument('-b', '--audio-bitrate',
-        help='audio bitrate in kbps (default 160); may be a colon-delimited list to include '
-             'additional audio tracks from the source, with value 0 or blank used to skip a track',
-        action=DelimitedValueAction, dest='audio_quality', metavar='AUDIO_BITRATE', value_type=int,
-        default=[160])
+    parser.add_audio_quality_argument(OPUS)
     parser.add_channel_layout_fix_argument()
     # Note: 'pass' is a keyword, so used name 'only_pass' internally.
     parser.add_argument('--pass',
@@ -78,7 +74,7 @@ def parse_args() -> Namespace:
         action='store', choices=['webm', 'mkv'], default='webm')
 
     # Timecode/segment arguments.
-    parser.add_timecode_arguments()
+    parser.add_timecode_argument_group()
 
     # Video/audio filter arguments.
     fgroup = parser.add_argument_group('video/audio filter arguments',
@@ -105,12 +101,7 @@ def parse_args() -> Namespace:
              '[tff] top field first; '
              '[bff] bottom field first',
         action='store', choices=['tff', 'bff'])
-    fgroup.add_argument('--fade-in',
-        help='apply an audio and video fade-in at the start of each output',
-        action='store', type=float, metavar='SECONDS')
-    fgroup.add_argument('--fade-out',
-        help='apply an audio and video fade-out at the end of each output',
-        action='store', type=float, metavar='SECONDS')
+    parser.add_fade_arguments(fgroup)
     fgroup.add_argument('-x', '--crop-width',
         help='left and right crop values',
         nargs=2, type=int, metavar=('LEFT', 'RIGHT'))
@@ -130,7 +121,6 @@ def parse_args() -> Namespace:
         help='amplitude (volume) multiplier, < 1.0 to reduce volume, or > 1.0 to increase volume',
         action='store', type=float, default=1.0)
 
-    parser.add_source_file_arguments('source video files to convert')
     parser.add_passthrough_arguments()
 
     args = parser.parse_args()

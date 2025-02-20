@@ -12,15 +12,14 @@
 #
 # You should have received a copy of the GNU General Public License along with this program; if not,
 # see <http://www.gnu.org/licenses>.
-
 from __future__ import annotations
 
 import os
 import sys
 from argparse import Action, ArgumentError, ArgumentParser, Namespace, _ArgumentGroup
 from typing import Any, Sequence
-from towebm import audioformats
 
+from towebm import audioformats
 from towebm._version import __version__
 
 
@@ -116,26 +115,32 @@ class ConverterArgumentParser(ExtraArgumentParser):
     _has_passthrough_arguments = False
 
     # ----------------------------------------------------------------------------------------------
-    def add_basic_arguments(self) -> None:
+    def add_basic_arguments(self, group: _ArgumentGroup | None=None) -> None:
         """
         Add basic arguments that apply to all converter tools.
         """
-        self.add_argument('--version', action='version', version='%(prog)s ' + __version__)
-        self.add_argument('-#', '--always-number',
+        parent = self if group is None else group
+        parent.add_argument('--version', action='version', version='%(prog)s ' + __version__)
+        parent.add_argument('-#', '--always-number',
             help='always add a number to the output file name',
             action='store_true', default=False)
-        self.add_argument('--pretend',
+        parent.add_argument('--pretend',
             help='display command lines but do not execute',
             action='store_true')
-        self.add_argument('-v', '--verbose',
+        parent.add_argument('-v', '--verbose',
             help='verbose output',
             action='count', default=0)
+        parent.add_argument('source_files',
+            help='source files to convert',
+            action='store', metavar='source_file', nargs='+')
 
     # ----------------------------------------------------------------------------------------------
-    def add_audio_quality_argument(self, format: audioformats.AudioFormat) -> None:
+    def add_audio_quality_argument(
+            self, format: audioformats.AudioFormat, group: _ArgumentGroup | None=None) -> None:
         """
         Add an argument quality argument for the specified audio format.
         """
+        parent = self if group is None else group
         if format.quality_type == audioformats.AudioQualityType.BITRATE:
             text = f'audio bitrate in kbps (default {format.default_quality})'
             value_type = int
@@ -149,7 +154,7 @@ class ConverterArgumentParser(ExtraArgumentParser):
                 'source, with value 0 or blank used to skip a track'
             )
 
-        self.add_argument(
+        parent.add_argument(
             f'-{format.quality_type.name[0].lower()}',
             f'--{format.quality_type.name.lower()}',
             help=text,
@@ -160,7 +165,28 @@ class ConverterArgumentParser(ExtraArgumentParser):
             default=format.default_quality)
 
     # ----------------------------------------------------------------------------------------------
-    def add_timecode_arguments(self) -> _ArgumentGroup:
+    def add_timecode_arguments(self, group: _ArgumentGroup | None=None) -> None:
+        """
+        Add time code arguments (--start, --end, --duration, --segment).
+        """
+        parent = self if group is None else group
+        parent.add_argument('--start',
+            help='starting source position',
+            action='store')
+        parent.add_argument('--duration',
+            help='duration to encode',
+            action='store')
+        parent.add_argument('--end',
+            help='ending source position',
+            action='store')
+        parent.add_argument('--segment',
+            help='segment start and end source position; may be specified multiple times to encode '
+                'multiple segments to separate files; enables --always-number when specified more '
+                'than once',
+            nargs=2, metavar=('START', 'END'), action='append', dest='segments')
+
+    # ----------------------------------------------------------------------------------------------
+    def add_timecode_argument_group(self) -> _ArgumentGroup:
         """
         Add a new group containing time code arguments (--start, --end, --duration, --segment) and
         return the group.
@@ -171,65 +197,49 @@ class ConverterArgumentParser(ExtraArgumentParser):
             'the  last not not be combined with the first three.  The same arguments will be '
             'applied to  all source files.  All argument values are in ffmpeg duration format; see '
             'ffmpeg documentation for more details.')
-        group.add_argument('--start',
-            help='starting source position',
-            action='store')
-        group.add_argument('--duration',
-            help='duration to encode',
-            action='store')
-        group.add_argument('--end',
-            help='ending source position',
-            action='store')
-        group.add_argument('--segment',
-            help='segment start and end source position; may be specified multiple times to encode '
-                'multiple segments to separate files; enables --always-number when specified more '
-                'than once',
-            nargs=2, metavar=('START', 'END'), action='append', dest='segments')
+        self.add_timecode_arguments(group)
         return group
 
     # ----------------------------------------------------------------------------------------------
-    def add_audio_filter_arguments(self) -> _ArgumentGroup:
+    def add_fade_arguments(self, group: _ArgumentGroup | None=None) -> None:
         """
-        Add a new group containing filter arguments that apply to audio-only encodes and return the
-        group.
+        Add --fade-in and --fade-out arguments.
         """
-        group = self.add_argument_group('filter arguments')
-        group.add_argument('--fade-in',
-            help='apply an audio fade-in at the start of each output',
+        parent = self if group is None else group
+        parent.add_argument('--fade-in',
+            help='apply a fade-in at the start of each output',
             action='store', type=float, metavar='SECONDS')
-        group.add_argument('--fade-out',
-            help='apply an audio fade-out at the end of each output',
+        parent.add_argument('--fade-out',
+            help='apply a fade-out at the end of each output',
             action='store', type=float, metavar='SECONDS')
-        group.add_argument('-f', '--filter',
-            help='custom audio filter, passed as -af argument to ffmpeg',
-            action='append', dest='audio_filter')
-        group.add_argument('--volume',
+
+    # ----------------------------------------------------------------------------------------------
+    def add_audio_filter_arguments(self, group: _ArgumentGroup | None=None) -> None:
+        """
+        Adds --volume and --audio-filter arguments.
+        """
+        parent = self if group is None else group
+        parent.add_argument('--volume',
             help='amplitude (volume) multiplier, < 1.0 to reduce volume, or > 1.0 to increase '
                 'volume; recommended to use replaygain to tag the file post-conversion, instead',
             action='store', type=float, default=1.0)
-        return group
+        parent.add_argument('-af', '--audio-filter',
+            help='custom audio filter, passed as -af argument to ffmpeg',
+            action='append', dest='audio_filter')
 
     # ----------------------------------------------------------------------------------------------
-    def add_channel_layout_fix_argument(self) -> None:
+    def add_channel_layout_fix_argument(self, group: _ArgumentGroup | None=None) -> None:
         """
-        Add a channel layout fix argument.
+        Add a --channel-layout-fix argument.
         """
-        self.add_argument('--channel-layout-fix',
+        parent = self if group is None else group
+        parent.add_argument('--channel-layout-fix',
             help='apply a channel layout fix to 4.1, 5.0, 5.1(side) audio sources to output a '
                 'compatible 5.1(rear) layout; may be a colon-delimited list to apply the fix to '
                 'multiple audio tracks from the source; choices are 4.1, 5.0, 5.1; 0 or blank '
                 'apply no fix',
             action=DelimitedValueAction, metavar="FIX_STRING",
             value_choices=['0', '4.1', '5.0', '5.1'], default=['0'])
-
-    # ----------------------------------------------------------------------------------------------
-    def add_source_file_arguments(self, help: str | None=None) -> None:
-        """
-        Add a positional argument that requires one or more source files.
-        """
-        self.add_argument('source_files',
-            help='source files to convert' if help is None else help,
-            action='store', metavar='source_file', nargs='+')
 
     # ----------------------------------------------------------------------------------------------
     def add_passthrough_arguments(self) -> _ArgumentGroup:
@@ -317,9 +327,10 @@ class AudioConverterArgumentParser(ConverterArgumentParser):
         self.add_audio_quality_argument(audio_format)
         if audio_format.requires_channel_layout_fix:
             self.add_channel_layout_fix_argument()
-        self.add_timecode_arguments()
-        self.add_audio_filter_arguments()
-        self.add_source_file_arguments()
+        self.add_timecode_argument_group()
+        grp = self.add_argument_group('filter_arguments')
+        self.add_fade_arguments(grp)
+        self.add_audio_filter_arguments(grp)
         self.add_passthrough_arguments()
 
     # ----------------------------------------------------------------------------------------------
@@ -333,4 +344,5 @@ class AudioConverterArgumentParser(ConverterArgumentParser):
         if len([q for q in parsed.audio_quality if q is not None and q > 0]) < 1:
             msg = f'at least one positive audio {self.audio_format.quality_type.name} must be specified'
             self.error(msg)
+
         return parsed

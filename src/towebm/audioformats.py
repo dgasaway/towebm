@@ -37,7 +37,7 @@ class AudioFormat:
         default_quality: float,
         supports_multi_tracks: bool,
         requires_channel_layout_fix: bool):
-        
+
         self.name = name
         self.codec = ffmpeg_codec
         self.file_extension = file_extension
@@ -45,7 +45,7 @@ class AudioFormat:
         self.default_quality = default_quality
         self.supports_multi_tracks = supports_multi_tracks
         self.requires_channel_layout_fix = requires_channel_layout_fix
-        
+
 # --------------------------------------------------------------------------------------------------
 # vorbis output is not picky about channel layout.
 VORBIS: Final[AudioFormat] = AudioFormat(

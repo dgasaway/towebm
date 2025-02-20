@@ -17,7 +17,7 @@ from __future__ import annotations
 import collections.abc
 import os
 import re
-from typing import TYPE_CHECKING, NamedTuple, Final
+from typing import TYPE_CHECKING, NamedTuple
 
 if TYPE_CHECKING:
     from argparse import Namespace
