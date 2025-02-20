@@ -79,16 +79,16 @@ def get_video_filter_args(args: Namespace, segment: Segment) -> list[str]:
     Returns a list of ffmpeg arguments that apply all of the selected video filters requested in the
     specified script arguments, or an empty list if none apply.
     """
-    filters = []
+    filters: list[str] = []
 
     # Deinterlace first.
     parity = ''
     if args.parity is not None:
         parity = ':' + args.parity
     if args.deinterlace == 'frame':
-        filters += ['bwdif=send_frame' + parity]
+        filters.append('bwdif=send_frame' + parity)
     elif args.deinterlace == 'field':
-        filters += ['bwdif=send_field' + parity]
+        filters.append('bwdif=send_field' + parity)
     elif args.deinterlace == 'ivtc':
         filters += ['fieldmatch', 'decimate']
     elif args.deinterlace == 'ivtc+':
@@ -99,12 +99,12 @@ def get_video_filter_args(args: Namespace, segment: Segment) -> list[str]:
     # Want to apply standard filters is a certain order, so do not loop.
     if args.standard_filter is not None:
         if 'gray' in args.standard_filter:
-            filters += ['format=gray']
+            filters.append('format=gray')
         if 'crop43' in args.standard_filter:
-            filters += ['crop=w=(in_h*4/3)']
+            filters.append('crop=w=(in_h*4/3)')
 
     if args.gamma != 1.0:
-        filters += [f'eq=gamma={args.gamma}']
+        filters.append(f'eq=gamma={args.gamma}')
 
     if args.crop_width is not None or args.crop_height is not None:
         if args.crop_width is not None and args.crop_height is not None:
@@ -113,28 +113,27 @@ def get_video_filter_args(args: Namespace, segment: Segment) -> list[str]:
             crop = 'crop=x={x[0]}:w=in_w-{x[0]}-{x[1]}'
         else:
             crop = 'crop=y={y[0]}:h=in_h-{y[0]}-{y[1]}'
-        filters += [crop.format(x=args.crop_width, y=args.crop_height)]
+        filters.append(crop.format(x=args.crop_width, y=args.crop_height))
 
     if args.standard_filter is not None:
         if 'scale23' in args.standard_filter:
-            filters += ['scale=h=in_h*2/3:w=-1']
+            filters.append('scale=h=in_h*2/3:w=-1')
 
     # The fade filters take a start time relative to the start of the output, rather than the start
     # of the source.  So, fade in will start at 0 secs.  Fade out needs to get the output duration
     # and subtract the fade out duration.
     if args.fade_in is not None:
-        filters += [f'fade=t=in:st=0:d={args.fade_in}']
+        filters.append(f'fade=t=in:st=0:d={args.fade_in}')
     if args.fade_out is not None:
         if segment.duration is not None:
             duration = duration_to_seconds(segment.duration)
         else:
             start = 0.0 if segment.start is None else duration_to_seconds(segment.start)
             duration = duration_to_seconds(segment.end) - start
-        filters += [f'fade=t=out:st={duration - args.fade_out}:d={args.fade_out}']
+        filters.append(f'fade=t=out:st={duration - args.fade_out}:d={args.fade_out}')
 
     if args.filter is not None:
-        for filter in args.filter:
-            filters += [filter]
+        filters += args.filter
 
     if len(filters) == 0:
         filters = ['copy']
@@ -146,28 +145,27 @@ def get_audio_filters(args: Namespace, segment: Segment) -> list[str]:
     """
     Returns a list of audio filters, one element per standard filter or user argument.
     """
-    filters = []
+    filters: list[str] = []
 
     # Want to apply standard filters is a certain order, so do not loop.
     if args.volume != 1.0:
-        filters += [f'volume={args.volume}']
+        filters.append(f'volume={args.volume}')
 
     # The fade filters take a start time relative to the start of the output, rather than the start
     # of the source.  So, fade in will start at 0 secs.  Fade out needs to get the output duration
     # and subtract the fade out duration.
     if args.fade_in is not None:
-        filters += [f'afade=t=in:st=0:d={args.fade_in}']
+        filters.append(f'afade=t=in:st=0:d={args.fade_in}')
     if args.fade_out is not None:
         if segment.duration is not None:
             duration = duration_to_seconds(segment.duration)
         else:
             start = 0.0 if segment.start is None else duration_to_seconds(segment.start)
             duration = duration_to_seconds(segment.end) - start
-        filters += [f'afade=t=out:st={duration - args.fade_out}:d={args.fade_out}']
+        filters.append(f'afade=t=out:st={duration - args.fade_out}:d={args.fade_out}')
 
     if args.audio_filter is not None:
-        for filter in args.audio_filter:
-            filters += [filter]
+        filters += args.audio_filter
 
     return filters
 
