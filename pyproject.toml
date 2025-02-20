@@ -1,0 +1,42 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "towebm"
+dynamic = ["version"]
+authors = [
+    { name = "David Gasaway", email = "dave@gasaway.org" }
+]
+description = "Python 3 scripts which use ffmpeg to convert videos to webm format (vp9+opus) or to convert audio to opus or vorbis."
+readme = "README.rst"
+requires-python = ">=3.8"
+keywords = ["video", "converter", "ffmpeg", "vp9", "opus", "webm", "vorbis"]
+classifiers = [
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3 :: Only",
+    "License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)",
+    "Topic :: Multimedia :: Video :: Conversion",
+    "Topic :: Multimedia :: Sound/Audio :: Conversion",
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+]
+license = "GPL-2.0-or-later"
+license-files = ["LICENSE.txt"]
+
+[project.urls]
+Homepage = "https://github.com/dgasaway/towebm"
+Issues = "https://github.com/dgasaway/towebm/issues"
+Download = "https://github.com/dgasaway/towebm/releases"
+
+[project.scripts]
+towebm = "towebm.towebm:main"
+toopus = "towebm.toopus:main"
+tovorbis = "towebm.tovorbis:main"
+ffcat = "towebm.ffcat:main"
+
+[tool.hatch.version]
+path = "src/towebm/_version.py"

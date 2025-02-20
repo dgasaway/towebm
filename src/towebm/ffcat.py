@@ -1,7 +1,7 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 # ffcat - Concatenates media files using ffmpeg.
-# Copyright (C) 2021 David Gasaway
+# Copyright (C) 2025 David Gasaway
 # https://github.com/dgasaway/towebm
 
 # This program is free software; you can redistribute it and/or modify it under the terms of the GNU
@@ -15,12 +15,14 @@
 # You should have received a copy of the GNU General Public License along with this program; if not,
 # see <http://www.gnu.org/licenses>.
 
-import sys
 import os
 import subprocess
+import sys
 from argparse import ArgumentParser
-from towebm._version import __version__
 from tempfile import NamedTemporaryFile
+
+from ._version import __version__
+
 
 # --------------------------------------------------------------------------------------------------
 def main():
@@ -53,3 +55,7 @@ def main():
         subprocess.check_call(ffmpeg_args)
     finally:
         os.remove(file_list.name)
+
+# --------------------------------------------------------------------------------------------------
+if __name__ == "__main__":
+     sys.exit(main())

@@ -1,7 +1,7 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 # towebm - Converts audio/video files to audio-only opus using ffmpeg.
-# Copyright (C) 2021 David Gasaway
+# Copyright (C) 2025 David Gasaway
 # https://github.com/dgasaway/towebm
 
 # This program is free software; you can redistribute it and/or modify it under the terms of the GNU
@@ -15,11 +15,13 @@
 # You should have received a copy of the GNU General Public License along with this program; if not,
 # see <http://www.gnu.org/licenses>.
 
-import sys
 import os
 import subprocess
+import sys
 from argparse import ArgumentParser
-from towebm.common import *
+
+from .common import *
+
 
 # --------------------------------------------------------------------------------------------------
 def main():
@@ -73,15 +75,16 @@ def main():
     check_source_files_exist(parser, args)
 
     # We'll treat each input file as it's own job, and continue to the next if there is a problem.
-    ret = 0
+    rc = 0
     for source_file in args.source_files:
         try:
             process_file(args, source_file)
         except subprocess.CalledProcessError as e:
-            if ret == 0 or e.returncode > ret:
-                ret = e.returncode
+            if rc == 0 or e.returncode > rc:
+                rc = e.returncode
             print('Execution error, proceeding to next source file.')
-    exit(ret)
+
+    return rc
 
 # --------------------------------------------------------------------------------------------------
 def get_ffmpeg_command(args, segment, file_name):
@@ -89,7 +92,7 @@ def get_ffmpeg_command(args, segment, file_name):
     Returns the arguments to run ffmpeg for a single output file.
     """
     title = os.path.splitext(os.path.basename(file_name))[0]
-    
+
     result = ['ffmpeg', '-nostdin', '-hide_banner']
     result += get_segment_arguments(segment)
     result += [
@@ -115,7 +118,7 @@ def process_segment(args, segment, file_name):
         print(cmd)
     if not args.pretend:
         subprocess.check_call(cmd)
-    
+
 # --------------------------------------------------------------------------------------------------
 def process_file(args, file_name):
     """
@@ -129,4 +132,4 @@ def process_file(args, file_name):
 
 # --------------------------------------------------------------------------------------------------
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

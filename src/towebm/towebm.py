@@ -1,7 +1,7 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 # towebm - Converts videos to webm format (vp9+opus) using ffmpeg.
-# Copyright (C) 2021 David Gasaway
+# Copyright (C) 2025 David Gasaway
 # https://github.com/dgasaway/towebm
 
 # This program is free software; you can redistribute it and/or modify it under the terms of the GNU
@@ -15,13 +15,14 @@
 # You should have received a copy of the GNU General Public License along with this program; if not,
 # see <http://www.gnu.org/licenses>.
 
-import sys
 import os
 import subprocess
-from datetime import datetime
+import sys
 from argparse import ArgumentParser
-from collections.abc import Sequence
-from towebm.common import *
+from datetime import datetime
+
+from .common import *
+
 
 # --------------------------------------------------------------------------------------------------
 def main():
@@ -108,7 +109,7 @@ def main():
     fgroup.add_argument('-a', '--audio-filter',
         help='custom audio filter, similar to -af ffmpeg argument',
         action='append')
-    fgroup.add_argument('--volume', 
+    fgroup.add_argument('--volume',
         help='amplitude (volume) multiplier, < 1.0 to reduce volume, or > 1.0 to increase volume',
         action='store', type=float, default=1.0)
 
@@ -118,7 +119,7 @@ def main():
     parser.add_argument('source_files',
         help='source video files to convert',
         action='store', metavar='source_file', nargs='+')
-    
+
     # Parse the arguments and do extra argument checks.
     args = parse_args(parser)
     if args.segments is not None and len(args.segments) > 1:
@@ -131,15 +132,16 @@ def main():
     check_source_files_exist(parser, args)
 
     # We'll treat each input file as it's own job, and continue to the next if there is a problem.
-    ret = 0
+    rc = 0
     for source_file in args.source_files:
         try:
             process_file(args, source_file)
         except subprocess.CalledProcessError as e:
-            if ret == 0 or e.returncode > ret:
-                ret = e.returncode
+            if rc == 0 or e.returncode > rc:
+                rc = e.returncode
             print('Execution error, proceeding to next source file.')
-    exit(ret)
+
+    return rc
 
 # --------------------------------------------------------------------------------------------------
 def get_pass1_command(args, segment, file_name):
@@ -182,7 +184,7 @@ def get_pass2_command(args, segment, file_name):
     Returns the arguments to run ffmpeg for pass two of a single output file.
     """
     title = os.path.splitext(os.path.basename(file_name))[0]
-    
+
     result = ['ffmpeg', '-nostdin', '-hide_banner']
     result += get_segment_arguments(segment)
     result += [
@@ -209,7 +211,7 @@ def get_pass2_command(args, segment, file_name):
         '-pass', '2',
         '-passlogfile', title,
         '-cpu-used', '2',
-        '-metadata', 'title={0}'.format(title)
+        '-metadata', f'title={title}'
         ]
     result += get_audio_metadata_map_args(args)
     result += args.passthrough_args
@@ -225,11 +227,11 @@ def get_log_command(args, file_name):
     """
     title = os.path.splitext(os.path.basename(file_name))[0]
     if args.delete_log:
-        return ['rm', '{0}-0.log'.format(title)]
+        return ['rm', f'{title}-0.log']
     else:
-        return ['mv', 
-                '{0}-0.log'.format(title),
-                '{0}_{1:%Y%m%d-%H%M%S}.log'.format(title, datetime.now())]
+        return ['mv',
+                f'{title}-0.log',
+                f'{title}_{datetime.now():%Y%m%d-%H%M%S}.log']
 
 # --------------------------------------------------------------------------------------------------
 def process_segment(args, segment, file_name):
@@ -253,7 +255,7 @@ def process_segment(args, segment, file_name):
             print(logcmd)
         if not args.pretend:
             subprocess.check_call(logcmd)
-    
+
 # --------------------------------------------------------------------------------------------------
 def process_file(args, file_name):
     """
@@ -267,4 +269,4 @@ def process_file(args, file_name):
 
 # --------------------------------------------------------------------------------------------------
 if __name__ == "__main__":
-    main()
+     sys.exit(main())

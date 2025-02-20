@@ -1,5 +1,5 @@
 # common.py - Shared routines.
-# Copyright (C) 2021 David Gasaway
+# Copyright (C) 2025 David Gasaway
 # https://github.com/dgasaway/towebm
 
 # This program is free software; you can redistribute it and/or modify it under the terms of the GNU
@@ -13,14 +13,15 @@
 # You should have received a copy of the GNU General Public License along with this program; if not,
 # see <http://www.gnu.org/licenses>.
 
+import argparse
 import os
 import re
 import sys
-import argparse
+import textwrap
 from collections import namedtuple
 from collections.abc import Sequence
-import textwrap
-from towebm._version import __version__
+
+from ._version import __version__
 
 Segment = namedtuple('Segment', 'start, end, duration')
 
@@ -42,7 +43,7 @@ class MultilineFormatter(argparse.HelpFormatter):
 # --------------------------------------------------------------------------------------------------
 class DelimitedValueAction(argparse.Action):
     """
-    An argparse action that splits a list of colon-delimited values into a sequence.
+    An argparse action that splits a list of colon-deparated values into a sequence.
     """
     def __init__(self, option_strings, dest, value_type=str, delimiter=':', value_choices=None,
         nargs=None, type=None, choices=None, **kwargs):
@@ -55,7 +56,7 @@ class DelimitedValueAction(argparse.Action):
         self._value_type = value_type
         self._delimiter = delimiter
         self._value_choices = value_choices
-        
+
         super().__init__(option_strings, dest, type=type, **kwargs)
 
     def __call__(self, parser, ns, values, option_string=None):
@@ -64,16 +65,13 @@ class DelimitedValueAction(argparse.Action):
                 for s in values.split(self._delimiter)]
         except:
             raise argparse.ArgumentError(self,
-                "must be a list of {} values delimited by '{}'".format(
-                self._value_type.__name__, self._delimiter))
+                f"must be a list of {self._value_type.__name__} values delimited by '{self._delimiter}'")
 
         if result is not None and self._value_choices is not None:
             for bad_choice in [choice for choice in result
                 if choice is not None and choice not in self._value_choices]:
                 raise argparse.ArgumentError(self,
-                    "invalid choice: '{}' (choose from {})".format(
-                        bad_choice, self._value_choices
-                    ))
+                    f"invalid choice: '{bad_choice}' (choose from {self._value_choices})")
         setattr(ns, self.dest, result)
 
 # --------------------------------------------------------------------------------------------------
@@ -134,7 +132,7 @@ def add_audio_filter_arguments(parser):
     fgroup.add_argument('-f', '--filter',
         help='custom audio filter, passed as -af argument to ffmpeg',
         action='append', dest='audio_filter')
-    fgroup.add_argument('--volume', 
+    fgroup.add_argument('--volume',
         help='amplitude (volume) multiplier, < 1.0 to reduce volume, or > 1.0 to increase volume; '
              'recommended to use replaygain to tag the file post-conversion, instead',
         action='store', type=float, default=1.0)
@@ -147,12 +145,8 @@ def add_passthrough_arguments(parser):
     group = parser.add_argument_group('passthrough arguments',
         'Additional arguments can be passed to ffmpeg as-is before the output file name by adding '
         'an ''--'' argument followed by the ffmpeg arguments.  Note, because these preceed the '
-        'output file name, they are only useful for output arguments.  These must appear after all '
-        'other arguments.')
-    # Add a dummy '--' argument for help text that argparse will never see.
-    group.add_argument('--', 
-        help='ffmpeg output arguments',
-        dest='passthrough_args', metavar='ARG', nargs='*')
+        'output file name, they are only useful for output arguments.|n |n '
+        '-- [arg [arg ...]]')
 
 # --------------------------------------------------------------------------------------------------
 def check_timecode_arguments(parser, args):
@@ -192,7 +186,7 @@ def get_safe_filename(filename, always_number):
     else:
         (base, ext) = os.path.splitext(filename)
         for i in range(100):
-            s = '{0}_{1:02}{2}'.format(base, i, ext)
+            s = f'{base}_{i:02}{ext}'
             if not os.path.exists(s):
                 return s
         return filename
@@ -204,7 +198,7 @@ def duration_to_seconds(duration):
     represented by the duration string; None if the string is not parsable.
     """
     pattern = r'^((((?P<hms_grp1>\d*):)?((?P<hms_grp2>\d*):)?((?P<hms_secs>\d+([.]\d*)?)))|' \
-              '((?P<smu_value>\d+([.]\d*)?)(?P<smu_units>s|ms|us)))$'
+              r'((?P<smu_value>\d+([.]\d*)?)(?P<smu_units>s|ms|us)))$'
     match = re.match(pattern, duration)
     if match:
         groups = match.groupdict()
@@ -232,7 +226,7 @@ def get_video_filter_args(args, segment):
     script arguments, or an empty list if none apply.
     """
     filters = []
-    
+
     # Deinterlace first.
     parity = ''
     if args.parity is not None:
@@ -247,7 +241,7 @@ def get_video_filter_args(args, segment):
         filters += ['fieldmatch', 'bwdif=send_frame', 'decimate']
     elif args.deinterlace == 'selframe':
         filters += ['fieldmatch', 'bwdif=0:-1:1']
-    
+
     # Want to apply standard filters is a certain order, so do not loop.
     if args.standard_filter is not None:
         if 'gray' in args.standard_filter:
@@ -256,7 +250,7 @@ def get_video_filter_args(args, segment):
             filters += ['crop=w=(in_h*4/3)']
 
     if args.gamma != 1.0:
-        filters += ['eq=gamma={g}'.format(g=args.gamma)]
+        filters += [f'eq=gamma={args.gamma}']
 
     if args.crop_width is not None or args.crop_height is not None:
         if args.crop_width is not None and args.crop_height is not None:
@@ -266,23 +260,23 @@ def get_video_filter_args(args, segment):
         else:
             crop = 'crop=y={y[0]}:h=in_h-{y[0]}-{y[1]}'
         filters += [crop.format(x=args.crop_width, y=args.crop_height)]
-    
+
     if args.standard_filter is not None:
         if 'scale23' in args.standard_filter:
             filters += ['scale=h=in_h*2/3:w=-1']
-    
+
     # The fade filters take a start time relative to the start of the output, rather than the start
     # of the source.  So, fade in will start at 0 secs.  Fade out needs to get the output duration
     # and subtract the fade out duration.
     if args.fade_in is not None:
-        filters += ['fade=t=in:st=0:d={0}'.format(args.fade_in)]
+        filters += [f'fade=t=in:st=0:d={args.fade_in}']
     if args.fade_out is not None:
         if segment.duration is not None:
             duration = duration_to_seconds(segment.duration)
         else:
             start = 0.0 if segment.start is None else duration_to_seconds(segment.start)
             duration = duration_to_seconds(segment.end) - start
-        filters += ['fade=t=out:st={0}:d={1}'.format(duration - args.fade_out, args.fade_out)]
+        filters += [f'fade=t=out:st={duration - args.fade_out}:d={args.fade_out}']
 
     if args.filter is not None:
         for filter in args.filter:
@@ -299,24 +293,24 @@ def get_audio_filters(args, segment):
     Returns a lits of audio filters, one element per standard filter or user argument.
     """
     filters = []
-    
+
     # Want to apply standard filters is a certain order, so do not loop.
     if args.volume != 1.0:
-        filters += ['volume={v}'.format(v=args.volume)]
+        filters += [f'volume={args.volume}']
 
     # The fade filters take a start time relative to the start of the output, rather than the start
     # of the source.  So, fade in will start at 0 secs.  Fade out needs to get the output duration
     # and subtract the fade out duration.
     if args.fade_in is not None:
-        filters += ['afade=t=in:st=0:d={0}'.format(args.fade_in)]
+        filters += [f'afade=t=in:st=0:d={args.fade_in}']
     if args.fade_out is not None:
         if segment.duration is not None:
             duration = duration_to_seconds(segment.duration)
         else:
             start = 0.0 if segment.start is None else duration_to_seconds(segment.start)
             duration = duration_to_seconds(segment.end) - start
-        filters += ['afade=t=out:st={0}:d={1}'.format(duration - args.fade_out, args.fade_out)]
-        
+        filters += [f'afade=t=out:st={duration - args.fade_out}:d={args.fade_out}']
+
     if args.audio_filter is not None:
         for filter in args.audio_filter:
             filters += [filter]
@@ -353,7 +347,7 @@ def get_audio_filter_args(args, segment):
                 flts = ['acopy']
             else:
                 flts = filters
-            per_track_filters.append('[0:a:{0}]'.format(i) + ','.join(flts))
+            per_track_filters.append(f'[0:a:{i}]' + ','.join(flts))
 
     if len(per_track_filters) == 0:
         return []
@@ -385,14 +379,14 @@ def get_audio_quality_arg(quality, stream_index = None):
         if stream_index is None:
             arg = '-q:a'
         else:
-            arg = '-q:a:{0}'.format(stream_index)
+            arg = f'-q:a:{stream_index}'
         return [arg, str(quality)]
     else:
         if stream_index is None:
             arg = '-b:a'
         else:
-            arg = '-b:a:{0}'.format(stream_index)
-        return [arg, '{0}k'.format(quality)]
+            arg = f'-b:a:{stream_index}'
+        return [arg, f'{quality}k']
 
 # --------------------------------------------------------------------------------------------------
 def get_audio_quality_args(args):
@@ -413,11 +407,11 @@ def get_audio_metadata_map_arg(output_index=0, input_index=None):
     Returns a list two ffmpeg arguments for copying audio stream metadata from a source stream to an
     output stream.
     """
-    arg = '-map_metadata:s:a:{0}'.format(output_index)
+    arg = f'-map_metadata:s:a:{output_index}'
     if input_index is None:
         return [arg, '0:s:a']
     else:
-        return [arg, '0:s:a:{0}'.format(input_index)]
+        return [arg, f'0:s:a:{input_index}']
 
 # --------------------------------------------------------------------------------------------------
 def get_audio_metadata_map_args(args):
@@ -444,16 +438,11 @@ def parse_args(parser):
     while anything before is parsed using the given argparse parser.  The passthrough arguments are
     added to the result args as 'passthrough_args'.
     """
-    # Grab all the arguments after '--'.
     argv = sys.argv[1:]
     idx = argv.index('--') if '--' in argv else -1
-    unparsed = argv[idx + 1:] if idx >= 0 else []
- 
-     # Give argparse the rest.
+    pargs = argv[idx + 1:] if idx >= 0 else []
     argv = argv[:idx] if idx >= 0 else argv
     args = parser.parse_args(argv)
-
-    # Replace the contents of the dummy argument with the unparsed args.
-    args.passthrough_args = unparsed
+    args.passthrough_args = pargs
     return args
-    
+
