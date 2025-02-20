@@ -40,3 +40,9 @@ ffcat = "towebm.ffcat:main"
 
 [tool.hatch.version]
 path = "src/towebm/_version.py"
+
+[tool.ruff.lint.extend-per-file-ignores]
+"src/towebm/*" = ["FBT001", "SIM102", "RET505", "S105"]
+"src/towebm/argparsers.py" = ["A002", "ARG002"]
+"src/towebm/to*.py" = ["T201"]
+"src/towebm/ffcat.py" = ["T201"]
