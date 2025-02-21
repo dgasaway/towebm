@@ -12,7 +12,7 @@ multiple audio tracks, e.g., surround sound and stereo.  The included scripts ar
 ``toopus``
     Transcodes audio or video files to Opus_ audio in an Ogg_ container.
 
-``tovorbus``
+``tovorbis``
     Transcodes audio or video files to Vorbis_ audio in an Ogg_ container.
 
 ``toflac``

@@ -37,6 +37,7 @@ towebm = "towebm.towebm:main"
 toopus = "towebm.toopus:main"
 tovorbis = "towebm.tovorbis:main"
 toflac = "towebm.toflac:main"
+toav1 = "towebm.toav1:main"
 ffcat = "towebm.ffcat:main"
 
 [tool.hatch.version]

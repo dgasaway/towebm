@@ -190,6 +190,17 @@ class Converter(ABC):
         return result
 
     # ----------------------------------------------------------------------------------------------
+    def get_base_segment_args(self, segment: Segment, file_name: str) -> list[str]:
+        """
+        Return a list of ffmpeg arguments for transcoding the specified segment of the specified
+        file.
+        """
+        result = ['ffmpeg', '-nostdin', '-hide_banner']
+        result += self.get_segment_arguments(segment)
+        result += [ '-i', file_name ]
+        return result
+
+    # ----------------------------------------------------------------------------------------------
     def get_audio_quality_arg(self, quality: float, stream_index: int | None=None) -> list[str]:
         """
         Return a list of ffmpeg arguments for a specified audio quality and optional output stream
@@ -293,6 +304,16 @@ class Converter(ABC):
 
         return rc
 
+    # --------------------------------------------------------------------------------------------------
+    def execute_command(self, command: list[str]) -> None:
+        """
+        Execute the specified command and arguments.
+        """
+        if self.args.pretend or self.args.verbose >= 1:
+            print(command)
+        if not self.args.pretend:
+            subprocess.check_call(command)
+
 # --------------------------------------------------------------------------------------------------
 class AudioConverter(Converter):
     """
@@ -317,20 +338,17 @@ class AudioConverter(Converter):
         """
         title = os.path.splitext(os.path.basename(file_name))[0]
 
-        result = ['ffmpeg', '-nostdin', '-hide_banner']
-        result += self.get_segment_arguments(segment)
+        result = self.get_base_segment_args(segment, file_name)
         result += [
-            '-i', file_name,
             '-vn',
             '-c:a', self.audio_format.ffmpeg_codec
-            ]
+        ]
         result += self.get_audio_filter_args(segment)
         result += self.get_audio_quality_args()
         result += self.get_audio_metadata_map_args()
         result += self.args.passthrough_args
 
-        unsafe_file_name = f'{title}.{self.audio_format.container}'
-        safe_file_name = self.get_safe_filename(unsafe_file_name)
+        safe_file_name = self.get_safe_filename(f'{title}.{self.audio_format.container}')
         result.append(safe_file_name)
 
         return result
@@ -431,29 +449,79 @@ class VideoConverter(Converter):
         return ['-filter_complex', '[0:v]' + ','.join(filters)]
 
     # --------------------------------------------------------------------------------------------------
-    def get_pass1_command(self, segment: Segment, file_name: str) -> list[str]:
+    def get_audio_codec_args(self, segment: Segment):
         """
-        Returns the arguments to run ffmpeg for pass one of a single output file.
+        Return a list of ffmpeg arguments for the audio portion of a single output file.
         """
-        title = os.path.splitext(os.path.basename(file_name))[0]
+        if len([q for q in self.args.audio_quality if q is not None and q > 0]) > 0:
+            result = ['-c:a', self.video_format.audio_format.ffmpeg_codec]
+            result += self.get_audio_filter_args(segment)
+            result += self.get_audio_quality_args()
+        else:
+            result = ['-an']
 
-        result = ['ffmpeg', '-nostdin', '-hide_banner']
-        result += self.get_segment_arguments(segment)
-        result += [
-            '-i', file_name,
+        return result
+
+    # --------------------------------------------------------------------------------------------------
+    def get_video_codec_args(self, segment: Segment, pass_args: list[str]):
+        """
+        Return a list of ffmpeg arguments for the audio portion of a single output file.
+        """
+        result = [
             '-c:v', self.video_format.ffmpeg_codec,
             self.video_format.video_quality_arg, str(self.args.quality),
             '-b:v', '0',
         ]
         result += self.video_format.codec_args
-        result += self.video_format.pass1_codec_args
+        result += pass_args
         result += self.get_video_filter_args(segment)
+
+        return result
+
+    # --------------------------------------------------------------------------------------------------
+    def get_one_pass_command(self, segment: Segment, file_name: str) -> list[str]:
+        """
+        Return a list of arguments to run ffmpeg for a one-pass trancode of a single output file.
+        """
+        title = os.path.splitext(os.path.basename(file_name))[0]
+
+        result = self.get_base_segment_args(segment, file_name)
+        result += self.get_video_codec_args(segment, self.video_format.pass1_codec_args)
+        result += self.get_audio_codec_args(segment)
         result += [
-            '-an',
             '-f', self.video_format.ffmpeg_output,
+            '-metadata', f'title={title}'
+        ]
+        result += self.get_audio_metadata_map_args()
+        result += self.args.passthrough_args
+
+        container = (
+            self.args.container if 'container' in self.args else
+            self.video_format.container_options[0])
+
+        safe_file_name = self.get_safe_filename(f'{title}.{container}')
+        result.append(safe_file_name)
+
+        return result
+
+    # --------------------------------------------------------------------------------------------------
+    def get_pass1_command(self, segment: Segment, file_name: str) -> list[str]:
+        """
+        Return a list of arguments to run ffmpeg for pass one of a single output file.
+        """
+        title = os.path.splitext(os.path.basename(file_name))[0]
+
+        result = self.get_base_segment_args(segment, file_name)
+        result += self.get_video_codec_args(segment, self.video_format.pass1_codec_args)
+        result += [
+            # No audio.
+            '-an',
+            # This is still required even if no output.
+            '-f', self.video_format.ffmpeg_output,
+            # Always overwrite an existing log file.
+            '-y',
             '-pass', '1',
             '-passlogfile', title,
-            '-y'
         ]
         result += self.args.passthrough_args
         result.append('/dev/null')
@@ -463,27 +531,13 @@ class VideoConverter(Converter):
     # --------------------------------------------------------------------------------------------------
     def get_pass2_command(self, segment: Segment, file_name: str) -> list[str]:
         """
-        Returns the arguments to run ffmpeg for pass two of a single output file.
+        Return a list of arguments to run ffmpeg for pass two of a single output file.
         """
         title = os.path.splitext(os.path.basename(file_name))[0]
 
-        result = ['ffmpeg', '-nostdin', '-hide_banner']
-        result += self.get_segment_arguments(segment)
-        result += [
-            '-i', file_name,
-            '-c:v', self.video_format.ffmpeg_codec,
-            self.video_format.video_quality_arg, str(self.args.quality),
-            '-b:v', '0',
-        ]
-        result += self.video_format.codec_args
-        result += self.video_format.pass2_codec_args
-        result += self.get_video_filter_args(segment)
-        if len([q for q in self.args.audio_quality if q is not None and q > 0]) > 0:
-            result += ['-c:a', 'libopus']
-        else:
-            result += ['-an']
-        result += self.get_audio_filter_args(segment)
-        result += self.get_audio_quality_args()
+        result = self.get_base_segment_args(segment, file_name)
+        result += self.get_video_codec_args(segment, self.video_format.pass2_codec_args)
+        result += self.get_audio_codec_args(segment)
         result += [
             '-f', self.video_format.ffmpeg_output,
             '-pass', '2',
@@ -502,7 +556,7 @@ class VideoConverter(Converter):
     # --------------------------------------------------------------------------------------------------
     def get_log_command(self, file_name: str) -> list[str]:
         """
-        Returns the arguments to either delete or rename the pass one log file, as requested by the
+        Return a list of arguments to either delete or rename the pass one log file, as requested by the
         user in the script arguemnts.
         """
         title = os.path.splitext(os.path.basename(file_name))[0]
@@ -518,20 +572,16 @@ class VideoConverter(Converter):
         """
         Execute the requested action for a single output file.
         """
-        if self.args.only_pass is None or self.args.only_pass == '1':
-            pass1cmd = self.get_pass1_command(segment, file_name)
-            if self.args.pretend or self.args.verbose >= 1:
-                print(pass1cmd)
-            if not self.args.pretend:
-                subprocess.check_call(pass1cmd)
-        if self.args.only_pass is None or self.args.only_pass == '2':
-            pass2cmd = self.get_pass2_command(segment, file_name)
-            logcmd = self.get_log_command(file_name)
-            if self.args.pretend or self.args.verbose >= 1:
-                print(pass2cmd)
-            if not self.args.pretend:
-                subprocess.check_call(pass2cmd)
-            if self.args.pretend or self.args.verbose >= 1:
-                print(logcmd)
-            if not self.args.pretend:
-                subprocess.check_call(logcmd)
+        if len(self.video_format.passes) == 1:
+            self.execute_command(self.get_one_pass_command(segment, file_name))
+            return
+        
+        if 'only_pass' not in self.args or self.args.only_pass is None:
+            passes = self.video_format.passes
+        else:
+            passes = [ int(self.args.only_pass) ]
+        if 1 in passes:
+            self.execute_command(self.get_pass1_command(segment, file_name))
+        if 2 in passes:
+            self.execute_command(self.get_pass2_command(segment, file_name))
+            self.execute_command(self.get_log_command(file_name))

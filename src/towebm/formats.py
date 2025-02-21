@@ -111,6 +111,15 @@ class VideoFormats:
             '-threads', '8',
             '-pix_fmt', 'yuv420p'
         ],
-        pass1_codec_args=[ '-cpu-used', '4' ],
-        pass2_codec_args=[ '-cpu-used', '2' ]
+        pass1_codec_args=['-cpu-used', '4'],
+        pass2_codec_args=['-cpu-used', '2']
+    )
+
+    AV1: Final[VideoFormat] = VideoFormat(
+        'AV1', [ 'mkv' ], 'libsvtav1', 'matroska', [1], AudioFormats.OPUS, 35,
+        'video quality, lower is better',
+        '-crf',
+        codec_args=[ ],
+        pass1_codec_args=[ ],
+        pass2_codec_args=[ ]
     )
