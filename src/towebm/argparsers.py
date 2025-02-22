@@ -15,12 +15,63 @@
 from __future__ import annotations
 
 import os
+import re
 import sys
+from dataclasses import dataclass
 from argparse import Action, ArgumentError, ArgumentParser, Namespace, _ArgumentGroup
 from typing import Any, Sequence
 
 from towebm.formats import Container, AudioQualityType, AudioFormat, VideoFormat
 from towebm._version import __version__
+
+# --------------------------------------------------------------------------------------------------
+class Segment:
+    """
+    Represents a segment of the input file bound by ffmpeg duration strings.
+    """
+    def __init__(self, start: str | None, end: str | None, duration: str | None):
+        """
+        Initialize a `Segment` by parsing the specified ffmpeg duration strings.
+        """
+        self.start_str = start
+        self.end_str = end
+        self.duration_str = duration
+        self.start = 0.0 if start is None else Segment.duration_to_seconds(start)
+        if end is not None:
+            self.end = Segment.duration_to_seconds(end)
+            self.duration = self.end - self.start
+        elif duration is not None:
+            self.duration = Segment.duration_to_seconds(duration)
+            self.end = self.start + self.duration
+
+    # ----------------------------------------------------------------------------------------------
+    @staticmethod
+    def duration_to_seconds(duration: str) -> float | None:
+        """
+        Convert the specified ffmpeg duration string into a decimal representing the number of
+        seconds represented by the duration string; None if the string is not parsable.
+        """
+        pattern = r'^((((?P<hms_grp1>\d*):)?((?P<hms_grp2>\d*):)?((?P<hms_secs>\d+([.]\d*)?)))|' \
+                r'((?P<smu_value>\d+([.]\d*)?)(?P<smu_units>s|ms|us)))$'
+        match = re.match(pattern, duration)
+        if match:
+            groups = match.groupdict()
+            if groups['hms_secs'] is not None:
+                value = float(groups['hms_secs'])
+                if groups['hms_grp2'] is not None:
+                    value += int(groups['hms_grp1']) * 60 * 60 + int(groups['hms_grp2']) * 60
+                elif groups['hms_grp1'] is not None:
+                    value += int(groups['hms_grp1']) * 60
+            else:
+                value = float(groups['smu_value'])
+                units = groups['smu_units']
+                if units == 'ms':
+                    value /= 1000.0
+                elif units == 'us':
+                    value /= 1000000.0
+            return value
+        else:
+            return None
 
 # --------------------------------------------------------------------------------------------------
 class DelimitedValueAction(Action):
@@ -309,7 +360,7 @@ class ConverterArgumentParser(ExtraArgumentParser):
         if 'fade_out' in args and args.fade_out is not None:
             if not (('duration' in args and args.duration is not None) or
                 ('end' in args and args.end is not None) or
-                ('segments' in args and args.segment is not None)):
+                ('segments' in args and args.segments is not None)):
                 self.error('--fade-out requires --duration, --end, or --segment')
 
     # ----------------------------------------------------------------------------------------------
@@ -331,14 +382,21 @@ class ConverterArgumentParser(ExtraArgumentParser):
         dest = 'passthrough_args' if self._has_passthrough_arguments else None
         parsed = super().parse_args(args, namespace, dest=dest)
         self._check_timecode_arguments(parsed)
-        if 'source_files' in parsed and parsed.source_files is not None:
-            self._check_source_files_exist(parsed.source_files)
         
         # Add/replace `container` with the original Container instance from _containers.
         if (len(self._containers) == 1):
             parsed.container = self._containers[0]
         else:
             parsed.container = [f for f in self._containers if f.name == parsed.container][0]
+
+        # Create an `all_segments` containing Segment instances representing all timecode args.
+        if parsed.segments is not None:
+            parsed.all_segments = [Segment(s[0], s[1], None) for s in parsed.segments]
+        else:
+            parsed.all_segments = [Segment(parsed.start, parsed.end, parsed.duration)]
+
+        if 'source_files' in parsed and parsed.source_files is not None:
+            self._check_source_files_exist(parsed.source_files)
 
         return parsed
 

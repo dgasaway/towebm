@@ -25,16 +25,7 @@ if TYPE_CHECKING:
     from argparse import Namespace
 
 from towebm.formats import AudioFormat, VideoFormat, AudioQualityType
-from towebm import argparsers
-
-# --------------------------------------------------------------------------------------------------
-class Segment(NamedTuple):
-    """
-    Represents a segment of the input file bound by ffmpeg duration strings.
-    """
-    start: str | None
-    end: str | None
-    duration: str | None
+from towebm.argparsers import Segment, AudioConverterArgumentParser, VideoConverterArgumentParser
 
 # --------------------------------------------------------------------------------------------------
 class Converter(ABC):
@@ -73,34 +64,23 @@ class Converter(ABC):
             return filename
 
     # ----------------------------------------------------------------------------------------------
-    def duration_to_seconds(self, duration: str) -> float | None:
+    def get_fade_filters(self, segment: Segment, filter_name: str) -> list[str]:
         """
-        Convert the specified ffmpeg duration string into a decimal representing the number of
-        seconds represented by the duration string; None if the string is not parsable.
+        Return a list of fade-in and/or fade-filters for the specified arguments based on fade
+        argments, or an empty list if none were specified in the arguments.
         """
-        pattern = r'^((((?P<hms_grp1>\d*):)?((?P<hms_grp2>\d*):)?((?P<hms_secs>\d+([.]\d*)?)))|' \
-                r'((?P<smu_value>\d+([.]\d*)?)(?P<smu_units>s|ms|us)))$'
-        match = re.match(pattern, duration)
-        if match:
-            groups = match.groupdict()
-            if groups['hms_secs'] is not None:
-                value = float(groups['hms_secs'])
-                if groups['hms_grp2'] is not None:
-                    value += int(groups['hms_grp1']) * 60 * 60 + int(groups['hms_grp2']) * 60
-                elif groups['hms_grp1'] is not None:
-                    value += int(groups['hms_grp1']) * 60
-            else:
-                value = float(groups['smu_value'])
-                units = groups['smu_units']
-                if units == 'ms':
-                    value /= 1000.0
-                elif units == 'us':
-                    value /= 1000000.0
-            return value
-        else:
-            return None
+        # The fade filters take a start time relative to the start of the output, rather than the
+        # start of the source.  So, fade in will start at 0 secs.  Fade out needs to get the output
+        # duration and subtract the fade out duration.
+        filters = []
+        if self.args.fade_in is not None:
+            filters.append(f'{filter_name}=t=in:st=0:d={self.args.fade_in}')
+        if self.args.fade_out is not None and segment.duration is not None:
+            start = segment.duration - self.args.fade_out
+            filters.append(f'{filter_name}=t=out:st={start}:d={self.args.fade_out}')
+        return filters
 
-   # ----------------------------------------------------------------------------------------------
+    # ----------------------------------------------------------------------------------------------
     def get_audio_filters(self, segment: Segment) -> list[str]:
         """
         Return a list of audio filters, one element per standard filter or audio filter arg.
@@ -110,22 +90,7 @@ class Converter(ABC):
         # Want to apply standard filters is a certain order, so do not loop.
         if self.args.volume != 1.0:
             filters.append(f'volume={self.args.volume}')
-
-        # The fade filters take a start time relative to the start of the output, rather than the
-        # start of the source.  So, fade in will start at 0 secs.  Fade out needs to get the output
-        # duration and subtract the fade out duration.
-        f_in = self.args.fade_in
-        f_out = self.args.fade_out
-        if f_in is not None:
-            filters.append(f'afade=t=in:st=0:d={f_in}')
-        if f_out is not None:
-            if segment.duration is not None:
-                duration = self.duration_to_seconds(segment.duration)
-            else:
-                start = 0.0 if segment.start is None else self.duration_to_seconds(segment.start)
-                duration = self.duration_to_seconds(segment.end) - start
-            filters.append(f'afade=t=out:st={duration - f_out}:d={f_out}')
-
+        filters += self.get_fade_filters(segment, 'afade')
         if self.args.audio_filter is not None:
             filters += self.args.audio_filter
 
@@ -181,12 +146,13 @@ class Converter(ABC):
         if no segment was specified.
         """
         result = []
-        if segment.start is not None:
-            result += ['-accurate_seek', '-ss', segment.start]
-        if segment.end is not None:
-            result += ['-to', segment.end]
-        if segment.duration is not None:
-            result += ['-t', segment.duration]
+        # For the args, it's best to use the original ffmpeg strings.
+        if segment.start_str is not None:
+            result += ['-accurate_seek', '-ss', segment.start_str]
+        if segment.end_str is not None:
+            result += ['-to', segment.end_str]
+        if segment.duration_str is not None:
+            result += ['-t', segment.duration_str]
         return result
 
     # ----------------------------------------------------------------------------------------------
@@ -288,11 +254,7 @@ class Converter(ABC):
         """
         Executes the requested action for a single input file.
         """
-        if self.args.segments is not None:
-            for segment in self.args.segments:
-                self.process_segment(Segment(segment[0], segment[1], None), file_name)
-        else:
-            segment = Segment(self.args.start, self.args.end, self.args.duration)
+        for segment in self.args.all_segments:
             self.process_segment(segment, file_name)
 
     # ----------------------------------------------------------------------------------------------
@@ -332,7 +294,7 @@ class AudioConverter(Converter):
         Convert the specified argument strings, or sys.argv if None, to a namespace.  Return the
         populated namespace.
         """
-        return argparsers.AudioConverterArgumentParser(self.audio_format).parse_args(args)
+        return AudioConverterArgumentParser(self.audio_format).parse_args(args)
 
     # ----------------------------------------------------------------------------------------------
     def get_segment_command(self, segment: Segment, file_name: str) -> list[str]:
@@ -378,7 +340,7 @@ class VideoConverter(Converter):
         Convert the specified argument strings, or sys.argv if None, to a namespace.  Return the
         populated namespace.
         """
-        return argparsers.VideoConverterArgumentParser(self.video_format).parse_args(args)
+        return VideoConverterArgumentParser(self.video_format).parse_args(args)
 
     # ----------------------------------------------------------------------------------------------
     def get_video_filter_args(self, segment: Segment) -> list[str]:
@@ -426,18 +388,7 @@ class VideoConverter(Converter):
             if 'scale23' in self.args.standard_filter:
                 filters.append('scale=h=in_h*2/3:w=-1')
 
-        # The fade filters take a start time relative to the start of the output, rather than the
-        # start of the source.  So, fade in will start at 0 secs.  Fade out needs to get the output
-        # duration and subtract the fade out duration.
-        if self.args.fade_in is not None:
-            filters.append(f'fade=t=in:st=0:d={self.args.fade_in}')
-        if self.args.fade_out is not None:
-            if segment.duration is not None:
-                duration = self.duration_to_seconds(segment.duration)
-            else:
-                start = 0.0 if segment.start is None else self.duration_to_seconds(segment.start)
-                duration = self.duration_to_seconds(segment.end) - start
-            filters.append(f'fade=t=out:st={duration - self.args.fade_out}:d={self.args.fade_out}')
+        filters += self.get_fade_filters(segment, 'fade')
 
         if self.args.video_filter is not None:
             filters += self.args.video_filter
