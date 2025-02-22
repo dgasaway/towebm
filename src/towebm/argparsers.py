@@ -17,7 +17,6 @@ from __future__ import annotations
 import os
 import re
 import sys
-from dataclasses import dataclass
 from argparse import Action, ArgumentError, ArgumentParser, Namespace, _ArgumentGroup
 from typing import Any, Sequence
 
@@ -382,12 +381,12 @@ class ConverterArgumentParser(ExtraArgumentParser):
         dest = 'passthrough_args' if self._has_passthrough_arguments else None
         parsed = super().parse_args(args, namespace, dest=dest)
         self._check_timecode_arguments(parsed)
-        
+
         # Add/replace `container` with the original Container instance from _containers.
         if (len(self._containers) == 1):
             parsed.container = self._containers[0]
         else:
-            parsed.container = [f for f in self._containers if f.name == parsed.container][0]
+            parsed.container = next(f for f in self._containers if f.name == parsed.container)
 
         # Create an `all_segments` containing Segment instances representing all timecode args.
         if parsed.segments is not None:

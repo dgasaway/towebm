@@ -18,9 +18,10 @@ from abc import ABC, abstractmethod
 import collections.abc
 from datetime import datetime
 import os
-import re
 import subprocess
-from typing import TYPE_CHECKING, NamedTuple
+import sys
+
+from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from argparse import Namespace
 
@@ -275,7 +276,7 @@ class Converter(ABC):
             except subprocess.CalledProcessError as ex:
                 if rc == 0 or ex.returncode > rc:
                     rc = ex.returncode
-                print('Execution error, proceeding to next source file.')
+                print('Execution error, proceeding to next source file.', file=sys.stderr)
 
         return rc
 
@@ -511,7 +512,7 @@ class VideoConverter(Converter):
         """
         if len(self.video_format.passes) == 1:
             return [self.get_one_pass_command(segment, file_name)]
-        
+
         if 'only_pass' not in self.args or self.args.only_pass is None:
             passes = self.video_format.passes
         else:

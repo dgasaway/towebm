@@ -12,7 +12,6 @@
 #
 # You should have received a copy of the GNU General Public License along with this program; if not,
 # see <http://www.gnu.org/licenses>.
-
 from __future__ import annotations
 
 import os
@@ -22,7 +21,6 @@ from argparse import ArgumentParser, Namespace
 from tempfile import NamedTemporaryFile
 
 from towebm._version import __version__
-
 
 # --------------------------------------------------------------------------------------------------
 def main() -> int:
