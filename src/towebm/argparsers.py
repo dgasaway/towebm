@@ -19,7 +19,7 @@ import sys
 from argparse import Action, ArgumentError, ArgumentParser, Namespace, _ArgumentGroup
 from typing import Any, Sequence
 
-from towebm import formats
+from towebm.formats import Container, AudioQualityType, AudioFormat, VideoFormat
 from towebm._version import __version__
 
 # --------------------------------------------------------------------------------------------------
@@ -117,6 +117,7 @@ class ConverterArgumentParser(ExtraArgumentParser):
         """
         super().__init__(description=description, fromfile_prefix_chars='@')
         self._has_passthrough_arguments = False
+        self._containers : list[Container] = []
 
     # ----------------------------------------------------------------------------------------------
     def add_basic_arguments(self, group: _ArgumentGroup | None=None) -> None:
@@ -140,15 +141,15 @@ class ConverterArgumentParser(ExtraArgumentParser):
 
     # ----------------------------------------------------------------------------------------------
     def add_audio_quality_argument(
-            self, format: formats.AudioFormat, group: _ArgumentGroup | None=None) -> None:
+            self, format: AudioFormat, group: _ArgumentGroup | None=None) -> None:
         """
         Add an argument quality argument for the specified audio format.
         """
         parent = self if group is None else group
-        if format.quality_type == formats.AudioQualityType.QUALITY:
+        if format.quality_type == AudioQualityType.QUALITY:
             text = f'audio quality (default {format.default_quality})'
             value_type = float
-        elif format.quality_type == formats.AudioQualityType.COMP_LEVEL:
+        elif format.quality_type == AudioQualityType.COMP_LEVEL:
             text = f'compression level (default {format.default_quality})'
             value_type = int
         else:
@@ -236,7 +237,7 @@ class ConverterArgumentParser(ExtraArgumentParser):
 
     # ----------------------------------------------------------------------------------------------
     def add_audio_filter_arguments(
-            self, format: formats.AudioFormat, group: _ArgumentGroup | None=None) -> None:
+            self, format: AudioFormat, group: _ArgumentGroup | None=None) -> None:
         """
         Add audio filter arguments.
         """
@@ -272,6 +273,20 @@ class ConverterArgumentParser(ExtraArgumentParser):
 
         self._has_passthrough_arguments = True
         return group
+
+    # ----------------------------------------------------------------------------------------------
+    def add_container_argument(
+            self, containers: Sequence[Container], group: _ArgumentGroup | None=None ) -> None:
+        """
+        Add an argument for selection of the container format.
+        """
+        self._containers = containers
+        if len(containers) > 1:
+            parent = self if group is None else group
+            choices = [c.name for c in containers]
+            parent.add_argument('-C', '--container',
+                help=f'container format (default {choices[0]})',
+                action='store', choices=choices, default=choices[0])
 
     # ----------------------------------------------------------------------------------------------
     def _check_timecode_arguments(self, args: Namespace) -> None:
@@ -318,6 +333,13 @@ class ConverterArgumentParser(ExtraArgumentParser):
         self._check_timecode_arguments(parsed)
         if 'source_files' in parsed and parsed.source_files is not None:
             self._check_source_files_exist(parsed.source_files)
+        
+        # Add/replace `container` with the original Container instance from _containers.
+        if (len(self._containers) == 1):
+            parsed.container = self._containers[0]
+        else:
+            parsed.container = [f for f in self._containers if f.name == parsed.container][0]
+
         return parsed
 
 # --------------------------------------------------------------------------------------------------
@@ -325,18 +347,22 @@ class AudioConverterArgumentParser(ConverterArgumentParser):
     """
     A `ConverterArgumentParser` subclass for audio converter tools.
     """
-    def __init__(self, audio_format: formats.AudioFormat):
+    def __init__(self, audio_format: AudioFormat):
         """
         Construct an argument parser pre-populated with arguments for an audio converter tool that
         outputs the specified format.
         """
         self.audio_format = audio_format
-        desc = f'Converts audio/video files to audio-only {audio_format.codec_name} using ffmpeg'
+        desc = f'Converts audio/video files to audio-only {audio_format.name} using ffmpeg'
         super().__init__(desc)
 
         # Options group
         self.add_basic_arguments()
         self.add_audio_quality_argument(audio_format)
+
+        # Note: This may not add an argument if there is only one container chice, but we need to
+        # call it anyway.
+        self.add_container_argument(audio_format.containers)
 
         # Timecode group
         self.add_timecode_argument_group()
@@ -370,16 +396,16 @@ class AudioConverterArgumentParser(ConverterArgumentParser):
 
 # --------------------------------------------------------------------------------------------------
 class VideoConverterArgumentParser(ConverterArgumentParser):
-    def __init__(self, video_format: formats.VideoFormat):
+    def __init__(self, video_format: VideoFormat):
         """
         Construct an argument parser pre-populated with arguments for a video converter tool that
         outputs the specified format.
         """
         self.video_format = video_format
-        s = ' or '.join(video_format.container_options)
+        s = ' or '.join([f.name for f in video_format.containers])
         desc = (
-            f'Converts video files to {video_format.codec_name} + '
-            f'{video_format.audio_format.codec_name} in a {s} container using a '
+            f'Converts video files to {video_format.name} + '
+            f'{video_format.audio_format.name} in a {s} container using a '
             f'{len(video_format.passes)}-pass ffmpeg encode.'
         )
         super().__init__(desc)
@@ -389,14 +415,14 @@ class VideoConverterArgumentParser(ConverterArgumentParser):
         self.add_video_quality_argument()
         self.add_audio_quality_argument(video_format.audio_format)
 
+        # Note: This may not add an argument if there is only one container chice, but we need to
+        # call it anyway.
+        self.add_container_argument(video_format.containers)
+
         # Add arguments only needed if more than one pass.  Note: 'pass' is a keyword, so
         # 'only_pass' is used internally.
         if len(video_format.passes) > 1:
             self.add_multi_pass_arguments(video_format.passes)
-
-        # Check for more than one container choice.
-        if len(video_format.container_options) > 1:
-            self.add_container_argument(video_format.container_options)
 
         # Timecode group.
         self.add_timecode_argument_group()
@@ -473,12 +499,3 @@ class VideoConverterArgumentParser(ConverterArgumentParser):
         parent.add_argument('--delete-log',
             help='delete pass 1 log (otherwise keep with timestamp)',
             action='store_true')
-
-    # ----------------------------------------------------------------------------------------------
-    def add_container_argument(self, choices: Sequence[str], group: _ArgumentGroup | None=None):
-        """
-        Add an argument for selection of the container format.
-        """
-        self.add_argument('-C', '--container',
-            help=f'container format (default {choices[0]})',
-            action='store', choices=choices, default=choices[0])

@@ -27,23 +27,48 @@ class AudioQualityType(IntEnum):
     COMP_LEVEL = 3
 
 # --------------------------------------------------------------------------------------------------
+class Container:
+    """
+    Represents the attributes of a container format.
+    """
+    def __init__(
+        self,
+        name: str,
+        ffmpeg_format: str,
+        extension: str):
+
+        self.name = name
+        self.ffmpeg_format = ffmpeg_format
+        self.extension = extension
+
+# --------------------------------------------------------------------------------------------------
+class Containers:
+    """
+    Contains static `Container` instances of the defined container formats.
+    """
+    OGG: Final[Container] = Container("Ogg", "ogg", ".ogg")
+    FLAC: Final[Container] = Container("FLAC", "flac", ".flac")
+    MKV: Final[Container] = Container("Matroska", "matroska", ".mkv")
+    WEBM: Final[Container] = Container("WebM", "webm", ".webm")
+
+# --------------------------------------------------------------------------------------------------
 class AudioFormat:
     """
     Represents the attributes of an audio format.
     """
     def __init__(
         self,
-        codec_name: str,
+        name: str,
         ffmpeg_codec: str,
-        container: str,
+        containers: list[Container],
         quality_type: AudioQualityType,
         default_quality: float,
         supports_multi_tracks: bool,
         requires_channel_layout_fix: bool):
 
-        self.codec_name = codec_name
+        self.name = name
         self.ffmpeg_codec = ffmpeg_codec
-        self.container = container
+        self.containers = containers
         self.quality_type = quality_type
         self.default_quality = default_quality
         self.supports_multi_tracks = supports_multi_tracks
@@ -51,16 +76,20 @@ class AudioFormat:
 
 # --------------------------------------------------------------------------------------------------
 class AudioFormats:
+    """
+    Contains static `AudioFormat` instances of the defined audio formts.
+    """
     # vorbis output is not picky about channel layout.
     VORBIS: Final[AudioFormat] = AudioFormat(
-        'vorbis', 'libvorbis', 'ogg', AudioQualityType.QUALITY, 6.0, True, False
+        'Vorbis', 'libvorbis', [Containers.OGG], AudioQualityType.QUALITY, 6.0, True, False
     )
     # ffmpeg will create a multi-track opus file.  VLC will not play it; mplayer will.
     OPUS: Final[AudioFormat] = AudioFormat(
-        'opus', 'libopus', 'opus', AudioQualityType.BITRATE, 160, True, True
+        'Opus', 'libopus', [Containers.OGG], AudioQualityType.BITRATE, 160, True, True
     )
     FLAC: Final[AudioFormat] = AudioFormat(
-        'flac', 'flac', 'flac', AudioQualityType.COMP_LEVEL, 8, False, False
+        'FLAC', 'flac', [Containers.FLAC, Containers.OGG], AudioQualityType.COMP_LEVEL, 8, False,
+        False
     )
 
 # --------------------------------------------------------------------------------------------------
@@ -70,10 +99,9 @@ class VideoFormat:
     """
     def __init__(
         self,
-        codec_name: str,
-        container_options: list[str],
+        name: str,
+        containers: list[Container],
         ffmpeg_codec: str,
-        ffmpeg_output: str,
         passes: list[int],
         audio_format: AudioFormat,
         default_quality: float,
@@ -83,11 +111,10 @@ class VideoFormat:
         pass1_codec_args: list[str],
         pass2_codec_args: list[str]):
 
-        self.codec_name = codec_name
+        self.name = name
         self.ffmpeg_codec = ffmpeg_codec
-        self.ffmpeg_output = ffmpeg_output
         self.passes = passes
-        self.container_options = container_options
+        self.containers = containers
         self.audio_format = audio_format
         self.default_quality = default_quality
         self.video_quality_help = video_quality_help
@@ -98,8 +125,11 @@ class VideoFormat:
 
 # --------------------------------------------------------------------------------------------------
 class VideoFormats:
+    """
+    Contains static `VideoFormat` instances of the defined video formats.
+    """
     WEBM: Final[VideoFormat] = VideoFormat(
-        'VP9', ['webm', 'mkv'], 'libvpx-vp9', 'webm', [1, 2], AudioFormats.OPUS, 30,
+        'VP9', [Containers.WEBM, Containers.MKV], 'libvpx-vp9', [1, 2], AudioFormats.OPUS, 30,
         'video quality, lower is better',
         '-crf',
         codec_args=[
@@ -116,7 +146,7 @@ class VideoFormats:
     )
 
     AV1: Final[VideoFormat] = VideoFormat(
-        'AV1', [ 'mkv' ], 'libsvtav1', 'matroska', [1], AudioFormats.OPUS, 35,
+        'AV1', [Containers.MKV], 'libsvtav1', [1], AudioFormats.OPUS, 35,
         'video quality, lower is better',
         '-crf',
         codec_args=[ ],

@@ -100,7 +100,7 @@ class Converter(ABC):
         else:
             return None
 
-    # ----------------------------------------------------------------------------------------------
+   # ----------------------------------------------------------------------------------------------
     def get_audio_filters(self, segment: Segment) -> list[str]:
         """
         Return a list of audio filters, one element per standard filter or audio filter arg.
@@ -197,7 +197,8 @@ class Converter(ABC):
         """
         result = ['ffmpeg', '-nostdin', '-hide_banner']
         result += self.get_segment_arguments(segment)
-        result += [ '-i', file_name ]
+        result += ['-i', file_name]
+        result += ['-f', self.args.container.ffmpeg_format]
         return result
 
     # ----------------------------------------------------------------------------------------------
@@ -348,7 +349,7 @@ class AudioConverter(Converter):
         result += self.get_audio_metadata_map_args()
         result += self.args.passthrough_args
 
-        safe_file_name = self.get_safe_filename(f'{title}.{self.audio_format.container}')
+        safe_file_name = self.get_safe_filename(f'{title}{self.args.container.extension}')
         result.append(safe_file_name)
 
         return result
@@ -449,7 +450,7 @@ class VideoConverter(Converter):
         return ['-filter_complex', '[0:v]' + ','.join(filters)]
 
     # --------------------------------------------------------------------------------------------------
-    def get_audio_codec_args(self, segment: Segment):
+    def get_audio_codec_args(self, segment: Segment) -> list[str]:
         """
         Return a list of ffmpeg arguments for the audio portion of a single output file.
         """
@@ -463,7 +464,7 @@ class VideoConverter(Converter):
         return result
 
     # --------------------------------------------------------------------------------------------------
-    def get_video_codec_args(self, segment: Segment, pass_args: list[str]):
+    def get_video_codec_args(self, segment: Segment, pass_args: list[str]) -> list[str]:
         """
         Return a list of ffmpeg arguments for the audio portion of a single output file.
         """
@@ -488,18 +489,11 @@ class VideoConverter(Converter):
         result = self.get_base_segment_args(segment, file_name)
         result += self.get_video_codec_args(segment, self.video_format.pass1_codec_args)
         result += self.get_audio_codec_args(segment)
-        result += [
-            '-f', self.video_format.ffmpeg_output,
-            '-metadata', f'title={title}'
-        ]
+        result += ['-metadata', f'title={title}']
         result += self.get_audio_metadata_map_args()
         result += self.args.passthrough_args
 
-        container = (
-            self.args.container if 'container' in self.args else
-            self.video_format.container_options[0])
-
-        safe_file_name = self.get_safe_filename(f'{title}.{container}')
+        safe_file_name = self.get_safe_filename(f'{title}{self.args.container.extension}')
         result.append(safe_file_name)
 
         return result
@@ -516,8 +510,6 @@ class VideoConverter(Converter):
         result += [
             # No audio.
             '-an',
-            # This is still required even if no output.
-            '-f', self.video_format.ffmpeg_output,
             # Always overwrite an existing log file.
             '-y',
             '-pass', '1',
@@ -539,7 +531,6 @@ class VideoConverter(Converter):
         result += self.get_video_codec_args(segment, self.video_format.pass2_codec_args)
         result += self.get_audio_codec_args(segment)
         result += [
-            '-f', self.video_format.ffmpeg_output,
             '-pass', '2',
             '-passlogfile', title,
             '-metadata', f'title={title}'
@@ -547,8 +538,7 @@ class VideoConverter(Converter):
         result += self.get_audio_metadata_map_args()
         result += self.args.passthrough_args
 
-        unsafe_file_name = f'{title}.{self.args.container}'
-        safe_file_name = self.get_safe_filename(unsafe_file_name)
+        safe_file_name = self.get_safe_filename(f'{title}{self.args.container.extension}')
         result.append(safe_file_name)
 
         return result
@@ -563,9 +553,7 @@ class VideoConverter(Converter):
         if self.args.delete_log:
             return ['rm', f'{title}-0.log']
         else:
-            return ['mv',
-                    f'{title}-0.log',
-                    f'{title}_{datetime.now():%Y%m%d-%H%M%S}.log']
+            return ['mv', f'{title}-0.log', f'{title}_{datetime.now():%Y%m%d-%H%M%S}.log']
 
     # --------------------------------------------------------------------------------------------------
     def process_segment(self, segment: Segment, file_name: str) -> None:
