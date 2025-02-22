@@ -269,16 +269,25 @@ class Converter(ABC):
             self.process_segment(segment, file_name)
 
     # ----------------------------------------------------------------------------------------------
-    def main(self, args: list[str] | None=None) -> int:
+    def setup(self, args: list[str] | None=None) -> int:
         """
-        Execute the operations indicated by specified argument strings.
+        Convert the specified argument strings, or sys.argv if None, to a namespace and assign then
+        to `self.args`.  If `self.args` is set, issues a warning.
         """
+        if args is not None:
+            print('WARNING: overriding args', file=sys.srderr)
         self.args = self.parse_args(args)
-        if self.args.verbose >= 1:
+        if self.args.verbose >= 2:
             print (self.args)
 
+    # ----------------------------------------------------------------------------------------------
+    def main(self, args: list[str] | None=None) -> int:
+        """
+        Execute the operations indicated by specified argument strings, or sys.argv if None.
+        """
         # We'll treat each input file as it's own job, and continue to the next if there is a
         # problem.
+        self.setup(args)
         rc = 0
         for source_file in self.args.source_files:
             try:

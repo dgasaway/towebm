@@ -68,15 +68,17 @@ class AudioFormats:
     """
     # vorbis output is not picky about channel layout.
     VORBIS: Final[AudioFormat] = AudioFormat(
-        'Vorbis', 'libvorbis', [Containers.OGG], AudioQualityType.QUALITY, 6.0, True, False
+        'Vorbis', 'libvorbis', [Containers.OGG], AudioQualityType.QUALITY, 6.0,
+        True, False
     )
     # ffmpeg will create a multi-track opus file.  VLC will not play it; mplayer will.
     OPUS: Final[AudioFormat] = AudioFormat(
-        'Opus', 'libopus', [Containers.OGG], AudioQualityType.BITRATE, 160, True, True
+        'Opus', 'libopus', [Containers.OGG], AudioQualityType.BITRATE, 160,
+        True, True
     )
     FLAC: Final[AudioFormat] = AudioFormat(
-        'FLAC', 'flac', [Containers.FLAC, Containers.OGG], AudioQualityType.COMP_LEVEL, 8, False,
-        False
+        'FLAC', 'flac', [Containers.FLAC, Containers.OGG], AudioQualityType.COMP_LEVEL, 8,
+        False, False
     )
 
 # --------------------------------------------------------------------------------------------------
