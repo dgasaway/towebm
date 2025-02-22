@@ -266,10 +266,22 @@ class Converter(ABC):
 
     # ----------------------------------------------------------------------------------------------
     @abstractmethod
+    def get_segment_commands(self, segment: Segment, file_name: str) -> list[list[str]]:
+        """
+        Return the list of commands to transcode the specified segment of the specified input file.
+        """
+
+    # ----------------------------------------------------------------------------------------------
     def process_segment(self, segment: Segment, file_name: str) -> None:
         """
         Execute the requested action for a single output file.
         """
+        commands = self.get_segment_commands(segment, file_name)
+        if self.args.pretend or self.args.verbose >= 1:
+            print(commands)
+        if not self.args.pretend:
+            for command in commands:
+                subprocess.check_call(command)
 
     # ----------------------------------------------------------------------------------------------
     def process_file(self, file_name: str) -> None:
@@ -305,16 +317,6 @@ class Converter(ABC):
 
         return rc
 
-    # --------------------------------------------------------------------------------------------------
-    def execute_command(self, command: list[str]) -> None:
-        """
-        Execute the specified command and arguments.
-        """
-        if self.args.pretend or self.args.verbose >= 1:
-            print(command)
-        if not self.args.pretend:
-            subprocess.check_call(command)
-
 # --------------------------------------------------------------------------------------------------
 class AudioConverter(Converter):
     """
@@ -333,7 +335,7 @@ class AudioConverter(Converter):
         return argparsers.AudioConverterArgumentParser(self.audio_format).parse_args(args)
 
     # ----------------------------------------------------------------------------------------------
-    def get_ffmpeg_command(self, segment: Segment, file_name: str) -> list[str]:
+    def get_segment_command(self, segment: Segment, file_name: str) -> list[str]:
         """
         Return the arguments to run ffmpeg for a single output file.
         """
@@ -355,15 +357,11 @@ class AudioConverter(Converter):
         return result
 
     # ----------------------------------------------------------------------------------------------
-    def process_segment(self, segment: Segment, file_name: str) -> None:
+    def get_segment_commands(self, segment: Segment, file_name: str) -> list[list[str]]:
         """
-        Execute the requested action for a single output file.
+        Return the list of commands to transcode the specified segment of the specified input file.
         """
-        cmd = self.get_ffmpeg_command(segment, file_name)
-        if self.args.pretend or self.args.verbose >= 1:
-            print(cmd)
-        if not self.args.pretend:
-            subprocess.check_call(cmd)
+        return [self.get_segment_command(segment, file_name)]
 
 # --------------------------------------------------------------------------------------------------
 class VideoConverter(Converter):
@@ -556,20 +554,22 @@ class VideoConverter(Converter):
             return ['mv', f'{title}-0.log', f'{title}_{datetime.now():%Y%m%d-%H%M%S}.log']
 
     # --------------------------------------------------------------------------------------------------
-    def process_segment(self, segment: Segment, file_name: str) -> None:
+    def get_segment_commands(self, segment: Segment, file_name: str) -> None:
         """
-        Execute the requested action for a single output file.
+        Return the list of commands to transcode the specified segment of the specified input file.
         """
         if len(self.video_format.passes) == 1:
-            self.execute_command(self.get_one_pass_command(segment, file_name))
-            return
+            return [self.get_one_pass_command(segment, file_name)]
         
         if 'only_pass' not in self.args or self.args.only_pass is None:
             passes = self.video_format.passes
         else:
             passes = [ int(self.args.only_pass) ]
+
+        commands = []
         if 1 in passes:
-            self.execute_command(self.get_pass1_command(segment, file_name))
+            commands.append(self.get_pass1_command(segment, file_name))
         if 2 in passes:
-            self.execute_command(self.get_pass2_command(segment, file_name))
-            self.execute_command(self.get_log_command(file_name))
+            commands.append(self.get_pass2_command(segment, file_name))
+            commands.append(self.get_log_command(file_name))
+        return commands
