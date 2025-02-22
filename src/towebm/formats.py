@@ -14,6 +14,7 @@
 # see <http://www.gnu.org/licenses>.
 from __future__ import annotations
 
+from dataclasses import dataclass
 from enum import IntEnum
 from typing import Final
 
@@ -27,19 +28,14 @@ class AudioQualityType(IntEnum):
     COMP_LEVEL = 3
 
 # --------------------------------------------------------------------------------------------------
+@dataclass
 class Container:
     """
     Represents the attributes of a container format.
     """
-    def __init__(
-        self,
-        name: str,
-        ffmpeg_format: str,
-        extension: str):
-
-        self.name = name
-        self.ffmpeg_format = ffmpeg_format
-        self.extension = extension
+    name: str
+    ffmpeg_format: str
+    extension: str
 
 # --------------------------------------------------------------------------------------------------
 class Containers:
@@ -52,27 +48,18 @@ class Containers:
     WEBM: Final[Container] = Container("WebM", "webm", ".webm")
 
 # --------------------------------------------------------------------------------------------------
+@dataclass
 class AudioFormat:
     """
     Represents the attributes of an audio format.
     """
-    def __init__(
-        self,
-        name: str,
-        ffmpeg_codec: str,
-        containers: list[Container],
-        quality_type: AudioQualityType,
-        default_quality: float,
-        supports_multi_tracks: bool,
-        requires_channel_layout_fix: bool):
-
-        self.name = name
-        self.ffmpeg_codec = ffmpeg_codec
-        self.containers = containers
-        self.quality_type = quality_type
-        self.default_quality = default_quality
-        self.supports_multi_tracks = supports_multi_tracks
-        self.requires_channel_layout_fix = requires_channel_layout_fix
+    name: str
+    ffmpeg_codec: str
+    containers: list[Container]
+    quality_type: AudioQualityType
+    default_quality: float
+    supports_multi_tracks: bool
+    requires_channel_layout_fix: bool
 
 # --------------------------------------------------------------------------------------------------
 class AudioFormats:
@@ -93,35 +80,22 @@ class AudioFormats:
     )
 
 # --------------------------------------------------------------------------------------------------
+@dataclass
 class VideoFormat:
     """
     Represents the attriburtes of a video format.
     """
-    def __init__(
-        self,
-        name: str,
-        containers: list[Container],
-        ffmpeg_codec: str,
-        passes: list[int],
-        audio_format: AudioFormat,
-        default_quality: float,
-        video_quality_help: str,
-        video_quality_arg: str,
-        codec_args: list[str],
-        pass1_codec_args: list[str],
-        pass2_codec_args: list[str]):
-
-        self.name = name
-        self.ffmpeg_codec = ffmpeg_codec
-        self.passes = passes
-        self.containers = containers
-        self.audio_format = audio_format
-        self.default_quality = default_quality
-        self.video_quality_help = video_quality_help
-        self.video_quality_arg = video_quality_arg
-        self.codec_args = codec_args
-        self.pass1_codec_args = pass1_codec_args
-        self.pass2_codec_args = pass2_codec_args
+    name: str
+    containers: list[Container]
+    ffmpeg_codec: str
+    passes: list[int]
+    audio_format: AudioFormat
+    default_quality: float
+    video_quality_help: str
+    video_quality_arg: str
+    codec_args: list[str]
+    pass1_codec_args: list[str]
+    pass2_codec_args: list[str]
 
 # --------------------------------------------------------------------------------------------------
 class VideoFormats:
