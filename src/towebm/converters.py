@@ -15,7 +15,6 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-import collections.abc
 from datetime import datetime
 import os
 import subprocess
@@ -214,13 +213,24 @@ class Converter(ABC):
             return [arg, f'0:s:a:{input_index}']
 
     # ----------------------------------------------------------------------------------------------
+    def is_iterable(self, obj) -> bool:
+        """
+        Determine whether the specified object is iterable.
+        """
+        try:
+            iter(obj)
+            return True
+        except TypeError:
+            return False
+
+    # ----------------------------------------------------------------------------------------------
     def get_audio_metadata_map_args(self) -> list[str]:
         """
         Return a list of ffmpeg arguments to copy audio metadata from the input streams to the
         matching output streams.
         """
         result: list[str] = []
-        if isinstance(self.args.audio_quality, collections.abc.Sequence):
+        if self.is_iterable(self.args.audio_quality):
             # We need both the input and output index to create the map.
             output_index = 0
             for input_index, quality in enumerate(self.args.audio_quality):
