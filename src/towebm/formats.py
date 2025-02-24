@@ -45,17 +45,21 @@ class Container:
     """
     The file extension to add for the container format.
     """
+    supports_multiple_tracks: bool
+    """
+    True if the format supports multiple audio tracks, otherwise False.
+    """
 
 # --------------------------------------------------------------------------------------------------
 class Containers:
     """
     Contains static `Container` instances of the defined container formats.
     """
-    OGG: Final[Container] = Container("Ogg", "ogg", ".ogg")
-    FLAC: Final[Container] = Container("FLAC", "flac", ".flac")
-    MKV: Final[Container] = Container("Matroska", "matroska", ".mkv")
-    WEBM: Final[Container] = Container("WebM", "webm", ".webm")
-    MP4: Final[Container] = Container("MP4", "mp4", ".mp4")
+    OGG: Final[Container] = Container("Ogg", "ogg", ".ogg", True)
+    FLAC: Final[Container] = Container("FLAC", "flac", ".flac", False)
+    MKV: Final[Container] = Container("Matroska", "matroska", ".mkv", True)
+    WEBM: Final[Container] = Container("WebM", "webm", ".webm", True)
+    MP4: Final[Container] = Container("MP4", "mp4", ".mp4", True)
 
 # --------------------------------------------------------------------------------------------------
 @dataclass
@@ -83,10 +87,6 @@ class AudioFormat:
     """
     The default audio quality.
     """
-    supports_multi_tracks: bool
-    """
-    True if the format supports multiple audio tracks, otherwise False.
-    """
     requires_channel_layout_fix: bool
     """
     True if the format requires mapping 5.1(side) to 5.1(rear) or similar for 5.0/4.1.
@@ -99,17 +99,14 @@ class AudioFormats:
     """
     # vorbis output is not picky about channel layout.
     VORBIS: Final[AudioFormat] = AudioFormat(
-        'Vorbis', 'libvorbis', [Containers.OGG], AudioQualityType.QUALITY, 6.0,
-        True, False
+        'Vorbis', 'libvorbis', [Containers.OGG], AudioQualityType.QUALITY, 6.0, False
     )
     # ffmpeg will create a multi-track opus file.  VLC will not play it; mplayer will.
     OPUS: Final[AudioFormat] = AudioFormat(
-        'Opus', 'libopus', [Containers.OGG], AudioQualityType.BITRATE, 160,
-        True, True
+        'Opus', 'libopus', [Containers.OGG], AudioQualityType.BITRATE, 160, True
     )
     FLAC: Final[AudioFormat] = AudioFormat(
-        'FLAC', 'flac', [Containers.FLAC, Containers.OGG], AudioQualityType.COMP_LEVEL, 8,
-        False, False
+        'FLAC', 'flac', [Containers.FLAC, Containers.OGG], AudioQualityType.COMP_LEVEL, 8, False
     )
 
 # --------------------------------------------------------------------------------------------------

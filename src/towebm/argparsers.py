@@ -102,7 +102,7 @@ class Segment:
 # --------------------------------------------------------------------------------------------------
 class DelimitedValueAction(Action):
     """
-    An argparse action that splits a list of colon-deparated values into a sequence.
+    An argparse action that splits a list of colon-separated values into a sequence.
     """
     def __init__(self,
         option_strings: Sequence[str],
@@ -232,12 +232,16 @@ class ConverterArgumentParser(ExtraArgumentParser):
         else:
             text = f'audio bitrate in kbps (default {format.default_quality})'
             value_type = int
-
-        if format.supports_multi_tracks:
-            text += (
-                '; may be a colon-delimited list to include  additional audio tracks from the '
-                'source, with value 0 or blank used to skip a track'
-            )
+        text += (
+            '; a colon-delimited list where each index matches a source audio track; a zero or '
+            'blank value ignores a source track'
+        )
+        multi = len([c for c in format.containers if c.supports_multiple_tracks])
+        if multi > 0:
+            text += '; '
+            if multi < len(format.containers):
+                text += 'depending on container format, '
+            text += 'multiple non-zero values may be provided to convert multiple tracks'
 
         parent.add_argument(
             f'-{format.quality_type.name[0].lower()}',
@@ -468,13 +472,13 @@ class AudioConverterArgumentParser(ConverterArgumentParser):
         parsed = super().parse_args(args, namespace)
 
         qual_name = self.audio_format.quality_type.name
-        if self.audio_format.supports_multi_tracks:
+        if parsed.container.supports_multiple_tracks:
             if len([q for q in parsed.audio_quality if q is not None and q > 0]) < 1:
                 msg = f'at least one positive audio {qual_name} must be specified'
                 self.error(msg)
         elif len([q for q in parsed.audio_quality if q is not None and q > 0]) != 1:
-                msg = f'exactly one non-zero {qual_name} must be specified'
-                self.error(msg)
+            msg = f'exactly one non-zero {qual_name} must be specified for the container'
+            self.error(msg)
 
         return parsed
 
