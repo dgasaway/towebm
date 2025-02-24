@@ -1,4 +1,4 @@
-# audioformats.py - Audio format definitions.
+# formats.py - Audio/video format definitions.
 # Copyright (C) 2025 David Gasaway
 # https://github.com/dgasaway/towebm
 
@@ -15,17 +15,46 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import IntEnum
 from typing import Final
 
 # --------------------------------------------------------------------------------------------------
-class AudioQualityType(IntEnum):
+@dataclass
+class AudioQualityArg:
     """
-    Represents the way that an audio codec expresses audio quality.
+    Represents an audio quality argument to add to a Converter CLI.
     """
-    BITRATE = 1
-    QUALITY = 2
-    COMP_LEVEL = 3
+    short_flag: str
+    """
+    The short option string.
+    """
+    long_flag: str
+    """
+    The long option string.
+    """
+    help: str
+    """
+    A brief description of what the argument does.
+    """
+    value_type: type
+    """
+    The type to which the command-line argument should be converted.
+    """
+    metavar: str
+    """
+    A name for the argument in usage messages.
+    """
+    default: any
+    """
+    The default audio quality.
+    """
+    ffmpeg_arg: str
+    """
+    The argument to pass to ffmpeg.
+    """
+    ffmpeg_value_suffix: str | None
+    """
+    The suffix to add to the quality value for the ffmpeg arg, if needed.
+    """
 
 # --------------------------------------------------------------------------------------------------
 @dataclass
@@ -86,13 +115,9 @@ class AudioFormat(Format):
     """
     Represents the attributes of an audio format.
     """
-    quality_type: AudioQualityType
+    quality_arg: AudioQualityArg
     """
-    The audio quality type.
-    """
-    default_quality: float
-    """
-    The default audio quality.
+    The audio quality argument definition.
     """
     requires_channel_layout_fix: bool
     """
@@ -106,14 +131,23 @@ class AudioFormats:
     """
     # vorbis output is not picky about channel layout.
     VORBIS: Final[AudioFormat] = AudioFormat(
-        'Vorbis', 'libvorbis', [Containers.OGG], AudioQualityType.QUALITY, 6.0, False
+        'Vorbis', 'libvorbis', [Containers.OGG],
+        AudioQualityArg('-q', '--quality', 'audio quality', float, 'QUALITY', 6.0, '-q', None),
+        False
     )
     # ffmpeg will create a multi-track opus file.  VLC will not play it; mplayer will.
     OPUS: Final[AudioFormat] = AudioFormat(
-        'Opus', 'libopus', [Containers.OGG], AudioQualityType.BITRATE, 160, True
+        'Opus', 'libopus', [Containers.OGG],
+        AudioQualityArg(
+            '-b', '--bitrate', 'audio bitrate in kbps', int, 'BITRATE', 160, '-b', 'k'),
+        True
     )
     FLAC: Final[AudioFormat] = AudioFormat(
-        'FLAC', 'flac', [Containers.FLAC, Containers.OGG], AudioQualityType.COMP_LEVEL, 8, False
+        'FLAC', 'flac', [Containers.FLAC, Containers.OGG],
+        AudioQualityArg(
+            '-c', '--compression-level', 'audio compression level', int, 'COMP_LEVEL', 8,
+            '-compression_level', None),
+        False
     )
 
 # --------------------------------------------------------------------------------------------------

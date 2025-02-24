@@ -19,9 +19,10 @@ import re
 import sys
 from argparse import Action, ArgumentError, ArgumentParser, Namespace, _ArgumentGroup
 from dataclasses import dataclass, field
-from typing import Any, Sequence
+from typing import Any, Sequence, TYPE_CHECKING
+if TYPE_CHECKING:
+    from towebm.formats import Container, AudioFormat, VideoFormat
 
-from towebm.formats import Container, AudioQualityType, AudioFormat, VideoFormat
 from towebm._version import __version__
 
 # --------------------------------------------------------------------------------------------------
@@ -223,35 +224,55 @@ class ConverterArgumentParser(ExtraArgumentParser):
         Add an argument quality argument for the specified audio format.
         """
         parent = self if group is None else group
-        if format.quality_type == AudioQualityType.QUALITY:
-            text = f'audio quality (default {format.default_quality})'
-            value_type = float
-        elif format.quality_type == AudioQualityType.COMP_LEVEL:
-            text = f'compression level (default {format.default_quality})'
-            value_type = int
-        else:
-            text = f'audio bitrate in kbps (default {format.default_quality})'
-            value_type = int
-        text += (
-            '; a colon-delimited list where each index matches a source audio track; a zero or '
-            'blank value ignores a source track'
-        )
-        multi = len([c for c in format.containers if c.supports_multiple_tracks])
-        if multi > 0:
-            text += '; '
-            if multi < len(format.containers):
-                text += 'depending on container format, '
-            text += 'multiple non-zero values may be provided to convert multiple tracks'
-
+        # Note, I couldn't find a way to pass the options as a list, thus the fixed 'short_flag' and
+        # 'long_flag' attributes.
         parent.add_argument(
-            f'-{format.quality_type.name[0].lower()}',
-            f'--{format.quality_type.name.lower()}',
-            help=text,
+            format.quality_arg.short_flag,
+            format.quality_arg.long_flag,
+            help=format.quality_arg.help + f' (default {format.quality_arg.default})',
             action=DelimitedValueAction,
             dest='audio_quality',
-            metavar=format.quality_type.name,
-            value_type=value_type,
-            default=[format.default_quality])
+            metavar=format.quality_arg.metavar,
+            value_type=format.quality_arg.value_type,
+            default=[format.quality_arg.default])
+
+    # ----------------------------------------------------------------------------------------------
+    def add_channel_layout_fix_argument(self, group: _ArgumentGroup | None=None) -> None:
+        """
+        Add a --channel-layout-fix argument.
+        """
+        parent = self if group is None else group
+        parent.add_argument('--channel-layout-fix',
+            help='apply a channel layout fix; choices are 4.1, 5.0, 5.1',
+            action=DelimitedValueAction, metavar="FIX_STRING",
+            value_choices=['0', '4.1', '5.0', '5.1'], default=['0'])
+
+    # ----------------------------------------------------------------------------------------------
+    def add_audio_quality_argument_group(self, format: AudioFormat) -> _ArgumentGroup:
+        """
+        Add a new audio group containing the audio quality argument and, if needed, the channel
+        layout fix argument.
+        """
+        text = (
+            'Audio quality is a colon-delimited list of values, where each index matches a source '
+            'audio track.  A zero or blank value ignores a source track.  If supported by the '
+            'container format, multiple non-empty values may be provided to convert more than one '
+            'source track.  By default, and if a single value is provided, only the first audio '
+            'track is converted.  For example, 0:x:y or :x:y would ignore track 1, convert track 2 '
+            'with  quality x, and convert track 3 with quality y.'
+        )
+        if format.requires_channel_layout_fix:
+            text += (
+                '  The channel layout fix works in a similar fashion, and is used to apply a '
+                'channel mapping to a layout compatible with the audio codec.  For example, '
+                '5.1(side)  is mapped to 5.1(rear).  Specify the channel layout of the source '
+                'track.  For  example, use 0:5.1:0 to apply a fix to track 2 containing 5.1(side) '
+                'audio.'
+            )
+        group = self.add_argument_group('audio quality', text)
+        self.add_audio_quality_argument(format, group)
+        if format.requires_channel_layout_fix:
+            self.add_channel_layout_fix_argument(group)
 
     # ----------------------------------------------------------------------------------------------
     def add_timecode_arguments(self, group: _ArgumentGroup | None=None) -> None:
@@ -303,20 +324,6 @@ class ConverterArgumentParser(ExtraArgumentParser):
             action='store', type=float, metavar='SECONDS')
 
     # ----------------------------------------------------------------------------------------------
-    def add_channel_layout_fix_argument(self, group: _ArgumentGroup | None=None) -> None:
-        """
-        Add a --channel-layout-fix argument.
-        """
-        parent = self if group is None else group
-        parent.add_argument('--channel-layout-fix',
-            help='apply a channel layout fix to 4.1, 5.0, 5.1(side) audio sources to output a '
-                'compatible 5.1(rear) layout; may be a colon-delimited list to apply the fix to '
-                'multiple audio tracks from the source; choices are 4.1, 5.0, 5.1; 0 or blank '
-                'apply no fix',
-            action=DelimitedValueAction, metavar="FIX_STRING",
-            value_choices=['0', '4.1', '5.0', '5.1'], default=['0'])
-
-    # ----------------------------------------------------------------------------------------------
     def add_audio_filter_arguments(
             self, format: AudioFormat, group: _ArgumentGroup | None=None) -> None:
         """
@@ -330,8 +337,6 @@ class ConverterArgumentParser(ExtraArgumentParser):
         parent.add_argument('-af', '--audio-filter',
             help='custom audio filter, passed as -af argument to ffmpeg',
             action='append', dest='audio_filter')
-        if format.requires_channel_layout_fix:
-            self.add_channel_layout_fix_argument(parent)
 
     # ----------------------------------------------------------------------------------------------
     def add_passthrough_argument_group(self) -> _ArgumentGroup:
@@ -446,11 +451,12 @@ class AudioConverterArgumentParser(ConverterArgumentParser):
 
         # Options group
         self.add_basic_arguments()
-        self.add_audio_quality_argument(audio_format)
-
         # Note: This may not add an argument if there is only one container chice, but we need to
         # call it anyway.
         self.add_container_argument(audio_format.containers)
+
+        # Audio quality group
+        self.add_audio_quality_argument_group(audio_format)
 
         # Timecode group
         self.add_timecode_argument_group()
@@ -471,7 +477,7 @@ class AudioConverterArgumentParser(ConverterArgumentParser):
         """
         parsed = super().parse_args(args, namespace)
 
-        qual_name = self.audio_format.quality_type.name
+        qual_name = self.audio_format.quality_arg.metavar
         if parsed.container.supports_multiple_tracks:
             if len([q for q in parsed.audio_quality if q is not None and q > 0]) < 1:
                 msg = f'at least one positive audio {qual_name} must be specified'
@@ -501,11 +507,12 @@ class VideoConverterArgumentParser(ConverterArgumentParser):
         # Options group
         self.add_basic_arguments()
         self.add_video_quality_argument()
-        self.add_audio_quality_argument(video_format.audio_format)
-
         # Note: This may not add an argument if there is only one container chice, but we need to
         # call it anyway.
         self.add_container_argument(video_format.containers)
+
+        # Audio quality group
+        self.add_audio_quality_argument_group(video_format.audio_format)
 
         # Add arguments only needed if more than one pass.  Note: 'pass' is a keyword, so
         # 'pass_num' is used internally.

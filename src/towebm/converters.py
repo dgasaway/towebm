@@ -23,9 +23,10 @@ import sys
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from argparse import Namespace
+    from towebm.formats import AudioFormat, VideoFormat
+    from towebm.argparsers import Segment
 
-from towebm.formats import AudioFormat, VideoFormat, AudioQualityType
-from towebm.argparsers import Segment, AudioConverterArgumentParser, VideoConverterArgumentParser
+from towebm.argparsers import AudioConverterArgumentParser, VideoConverterArgumentParser
 
 # --------------------------------------------------------------------------------------------------
 class Converter(ABC):
@@ -173,17 +174,16 @@ class Converter(ABC):
         Return a list of ffmpeg arguments for a specified audio quality and optional output stream
         index.
         """
-        quality_sfx = ''
-        if self.audio_format.quality_type == AudioQualityType.QUALITY:
-            arg = '-q:a'
-        elif self.audio_format.quality_type == AudioQualityType.COMP_LEVEL:
-            arg = '-compression_level:a'
-        else:
-            arg = '-b:a'
-            quality_sfx = 'k'
+        quality_arg = self.audio_format.quality_arg
+        arg = f'{quality_arg.ffmpeg_arg}:a'
+        if stream_index is not None:
+            arg += f':{stream_index}'
 
-        arg = arg if stream_index is None else f'{arg}:{stream_index}'
-        return [arg, f'{quality}{quality_sfx}']
+        value = str(quality)
+        if quality_arg.ffmpeg_value_suffix is not None:
+            value += quality_arg.ffmpeg_value_suffix
+
+        return [arg, value]
 
     # ----------------------------------------------------------------------------------------------
     def get_audio_quality_args(self) -> list[str]:
