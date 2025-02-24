@@ -18,30 +18,57 @@ import os
 import re
 import sys
 from argparse import Action, ArgumentError, ArgumentParser, Namespace, _ArgumentGroup
+from dataclasses import dataclass, field
 from typing import Any, Sequence
 
 from towebm.formats import Container, AudioQualityType, AudioFormat, VideoFormat
 from towebm._version import __version__
 
 # --------------------------------------------------------------------------------------------------
+@dataclass
 class Segment:
     """
     Represents a segment of the input file bound by ffmpeg duration strings.
     """
-    def __init__(self, start: str | None, end: str | None, duration: str | None):
+    start_str: str | None
+    """
+    An ffmpeg duration string specifying the start of the segment.
+    """
+    end_str: str | None
+    """
+    An ffmpeg duration string specifying the end of the segment.
+    """
+    duration_str: str | None
+    """
+    An ffmpeg duration string specifying the duration of the segment.
+    """
+    start: float = field(init=False)
+    """
+    The start position of the segment in seconds.
+    """
+    end: float | None = field(init=False)
+    """
+    The end position of the segment in seconds.
+    """
+    duration: float | None = field(init=False)
+    """
+    The duration of the segment in seconds.
+    """
+    def __post_init__(self):
         """
-        Initialize a `Segment` by parsing the specified ffmpeg duration strings.
+        Parse the `start_str`, `end_str`, and `duration_str` values to `start`, `end`, and
+        `duration`, respectively.
         """
-        self.start_str = start
-        self.end_str = end
-        self.duration_str = duration
-        self.start = 0.0 if start is None else Segment.duration_to_seconds(start)
-        if end is not None:
-            self.end = Segment.duration_to_seconds(end)
+        self.start = 0.0 if self.start_str is None else Segment.duration_to_seconds(self.start_str)
+        if self.end_str is not None:
+            self.end = Segment.duration_to_seconds(self.end_str)
             self.duration = self.end - self.start
-        elif duration is not None:
-            self.duration = Segment.duration_to_seconds(duration)
+        elif self.duration_str is not None:
+            self.duration = Segment.duration_to_seconds(self.duration_str)
             self.end = self.start + self.duration
+        else:
+            self.duration = None
+            self.end = None
 
     # ----------------------------------------------------------------------------------------------
     @staticmethod
@@ -477,7 +504,7 @@ class VideoConverterArgumentParser(ConverterArgumentParser):
         self.add_container_argument(video_format.containers)
 
         # Add arguments only needed if more than one pass.  Note: 'pass' is a keyword, so
-        # 'only_pass' is used internally.
+        # 'pass_num' is used internally.
         if len(video_format.passes) > 1:
             self.add_multi_pass_arguments(video_format.passes)
 
@@ -552,7 +579,7 @@ class VideoConverterArgumentParser(ConverterArgumentParser):
         parent = self if group is None else group
         parent.add_argument('--pass',
             help='run only a given pass',
-            action='store', choices=passes, dest='only_pass')
+            action='store', choices=passes, dest='pass_num')
         parent.add_argument('--delete-log',
             help='delete pass 1 log (otherwise keep with timestamp)',
             action='store_true')

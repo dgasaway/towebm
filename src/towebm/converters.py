@@ -219,9 +219,10 @@ class Converter(ABC):
         """
         try:
             iter(obj)
-            return True
         except TypeError:
             return False
+        else:
+            return True
 
     # ----------------------------------------------------------------------------------------------
     def get_audio_metadata_map_args(self) -> list[str]:
@@ -255,7 +256,10 @@ class Converter(ABC):
         """
         commands = self.get_segment_commands(segment, file_name)
         if self.args.pretend or self.args.verbose >= 1:
-            print(commands)
+            for command in commands:
+                #print(' '.join(command))
+                print(command)
+                print()
         if not self.args.pretend:
             for command in commands:
                 subprocess.check_call(command)
@@ -421,7 +425,7 @@ class VideoConverter(Converter):
     # --------------------------------------------------------------------------------------------------
     def get_audio_codec_args(self, segment: Segment) -> list[str]:
         """
-        Return a list of ffmpeg arguments for the audio portion of a single output file.
+        Return a list of ffmpeg audio codec and audio filter argumetns for the specified segment.
         """
         if len([q for q in self.args.audio_quality if q is not None and q > 0]) > 0:
             result = ['-c:a', self.video_format.audio_format.ffmpeg_codec]
@@ -433,17 +437,31 @@ class VideoConverter(Converter):
         return result
 
     # --------------------------------------------------------------------------------------------------
-    def get_video_codec_args(self, segment: Segment, pass_args: list[str]) -> list[str]:
+    def get_video_pass_codec_args(self, pass_num: int) -> list[str]:
         """
-        Return a list of ffmpeg arguments for the audio portion of a single output file.
+        Return a list of the ffmpeg video codec arguments from the video format specification for the
+        specified pass.
+        """
+        codec_args = self.video_format.codec_args
+        result = []
+        if codec_args is not None and len(codec_args) > 0:
+            if codec_args[0] is not None:
+                result.extend(codec_args[0])
+            if len(codec_args) > pass_num and codec_args[pass_num] is not None:
+                result.extend(codec_args[pass_num])
+        return result
+
+    # --------------------------------------------------------------------------------------------------
+    def get_video_codec_args(self, segment: Segment, pass_num: int) -> list[str]:
+        """
+        Return a list of ffmpeg video codec and video filter arguments for the specified segment and
+        pass number.
         """
         result = [
             '-c:v', self.video_format.ffmpeg_codec,
-            self.video_format.video_quality_arg, str(self.args.quality),
-            '-b:v', '0',
+            self.video_format.video_quality_arg, str(self.args.quality)
         ]
-        result += self.video_format.codec_args
-        result += pass_args
+        result += self.get_video_pass_codec_args(pass_num)
         result += self.get_video_filter_args(segment)
 
         return result
@@ -451,12 +469,13 @@ class VideoConverter(Converter):
     # --------------------------------------------------------------------------------------------------
     def get_one_pass_command(self, segment: Segment, file_name: str) -> list[str]:
         """
-        Return a list of arguments to run ffmpeg for a one-pass trancode of a single output file.
+        Return a complete ffmpeg command and arguments to perform a one-pass transcode of the specified
+        segment and input file.
         """
         title = os.path.splitext(os.path.basename(file_name))[0]
 
         result = self.get_base_segment_args(segment, file_name)
-        result += self.get_video_codec_args(segment, self.video_format.pass1_codec_args)
+        result += self.get_video_codec_args(segment, 1)
         result += self.get_audio_codec_args(segment)
         result += ['-metadata', f'title={title}']
         result += self.get_audio_metadata_map_args()
@@ -468,20 +487,21 @@ class VideoConverter(Converter):
         return result
 
     # --------------------------------------------------------------------------------------------------
-    def get_pass1_command(self, segment: Segment, file_name: str) -> list[str]:
+    def get_not_last_pass_command(self, segment: Segment, file_name: str, pass_num: int) -> list[str]:
         """
-        Return a list of arguments to run ffmpeg for pass one of a single output file.
+        Return a complete ffmpeg command and arguments to perform the specified video-only no-output
+        pass for the specified segment and input file.
         """
         title = os.path.splitext(os.path.basename(file_name))[0]
 
         result = self.get_base_segment_args(segment, file_name)
-        result += self.get_video_codec_args(segment, self.video_format.pass1_codec_args)
+        result += self.get_video_codec_args(segment, pass_num)
         result += [
             # No audio.
             '-an',
             # Always overwrite an existing log file.
             '-y',
-            '-pass', '1',
+            '-pass', str(pass_num),
             '-passlogfile', title,
         ]
         result += self.args.passthrough_args
@@ -490,17 +510,18 @@ class VideoConverter(Converter):
         return result
 
     # --------------------------------------------------------------------------------------------------
-    def get_pass2_command(self, segment: Segment, file_name: str) -> list[str]:
+    def get_last_pass_command(self, segment: Segment, file_name: str, pass_num: int) -> list[str]:
         """
-        Return a list of arguments to run ffmpeg for pass two of a single output file.
+        Return a complete ffmpeg command and arguments to perform the last pass for the specified
+        segment and input file.
         """
         title = os.path.splitext(os.path.basename(file_name))[0]
 
         result = self.get_base_segment_args(segment, file_name)
-        result += self.get_video_codec_args(segment, self.video_format.pass2_codec_args)
+        result += self.get_video_codec_args(segment, pass_num)
         result += self.get_audio_codec_args(segment)
         result += [
-            '-pass', '2',
+            '-pass', str(pass_num),
             '-passlogfile', title,
             '-metadata', f'title={title}'
         ]
@@ -532,15 +553,17 @@ class VideoConverter(Converter):
         if len(self.video_format.passes) == 1:
             return [self.get_one_pass_command(segment, file_name)]
 
-        if 'only_pass' not in self.args or self.args.only_pass is None:
-            passes = self.video_format.passes
+        if 'pass_num' not in self.args or self.args.pass_num is None:
+            passes = sorted(self.video_format.passes)
         else:
-            passes = [ int(self.args.only_pass) ]
+            passes = [ int(self.args.pass_num) ]
 
         commands = []
-        if 1 in passes:
-            commands.append(self.get_pass1_command(segment, file_name))
-        if 2 in passes:
-            commands.append(self.get_pass2_command(segment, file_name))
-            commands.append(self.get_log_command(file_name))
+        for pass_num in passes:
+            if pass_num < max(self.video_format.passes):
+                commands.append(self.get_not_last_pass_command(segment, file_name, pass_num))
+            else:
+                commands.append(self.get_last_pass_command(segment, file_name, pass_num))
+                commands.append(self.get_log_command(file_name))
+
         return commands

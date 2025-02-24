@@ -34,8 +34,17 @@ class Container:
     Represents the attributes of a container format.
     """
     name: str
+    """
+    The name of the container format.
+    """
     ffmpeg_format: str
+    """
+    The ffmpeg format name of the container format.
+    """
     extension: str
+    """
+    The file extension to add for the container format.
+    """
 
 # --------------------------------------------------------------------------------------------------
 class Containers:
@@ -55,12 +64,33 @@ class AudioFormat:
     Represents the attributes of an audio format.
     """
     name: str
+    """
+    The name of the audio format.
+    """
     ffmpeg_codec: str
+    """
+    The name of the corresponding ffmpeg codec.
+    """
     containers: list[Container]
+    """
+    The list of supported container formats when the output is an audio file.
+    """
     quality_type: AudioQualityType
+    """
+    The audio quality type.
+    """
     default_quality: float
+    """
+    The default audio quality.
+    """
     supports_multi_tracks: bool
+    """
+    True if the format supports multiple audio tracks, otherwise False.
+    """
     requires_channel_layout_fix: bool
+    """
+    True if the format requires mapping 5.1(side) to 5.1(rear) or similar for 5.0/4.1.
+    """
 
 # --------------------------------------------------------------------------------------------------
 class AudioFormats:
@@ -89,16 +119,42 @@ class VideoFormat:
     Represents the attriburtes of a video format.
     """
     name: str
-    containers: list[Container]
+    """
+    The name of the video format.
+    """
     ffmpeg_codec: str
+    """
+    The name of the corresponding ffmpeg codec.
+    """
+    containers: list[Container]
+    """
+    The list of supported container formats.
+    """
     passes: list[int]
+    """
+    A list of the passes for this format and codec.
+    """
     audio_format: AudioFormat
+    """
+    The audio format to use for this video format.
+    """
     default_quality: float
+    """
+    The default video quality.
+    """
     video_quality_help: str
+    """
+    The help string used by the arg parser for the video quality argument.
+    """
     video_quality_arg: str
-    codec_args: list[str]
-    pass1_codec_args: list[str]
-    pass2_codec_args: list[str]
+    """
+    The ffmpeg argument for the video quality argument.
+    """
+    codec_args: list[list[str]]
+    """
+    The ffmpeg codec arguments to add.  Arguments in index 0 are added for all passes, arguments in
+    index 1 are added to pass 1, and so on.
+    """
 
 # --------------------------------------------------------------------------------------------------
 class VideoFormats:
@@ -106,47 +162,68 @@ class VideoFormats:
     Contains static `VideoFormat` instances of the defined video formats.
     """
     WEBM: Final[VideoFormat] = VideoFormat(
-        'VP9', [Containers.WEBM, Containers.MKV, Containers.MP4], 'libvpx-vp9', [1, 2],
-        AudioFormats.OPUS, 30,
+        'VP9',
+        'libvpx-vp9',
+        [Containers.WEBM, Containers.MKV, Containers.MP4],
+        [1, 2],
+        AudioFormats.OPUS,
+        30,
         'video quality, lower is better',
         '-crf',
-        codec_args=[
-            '-b:v', '0',
-            '-tile-columns', '2',
-            '-row-mt', '1',
-            '-auto-alt-ref', '1',
-            '-lag-in-frames', '25',
-            '-threads', '8',
-            '-pix_fmt', 'yuv420p'
+        [
+            # All pass args.
+            [
+                '-b:v', '0',
+                '-tile-columns', '2',
+                '-row-mt', '1',
+                '-auto-alt-ref', '1',
+                '-lag-in-frames', '25',
+                '-threads', '8',
+                '-pix_fmt', 'yuv420p'
+            ],
+            # Pass one args.
+            ['-cpu-used', '4'],
+            # Pass two args.
+            ['-cpu-used', '2']
         ],
-        pass1_codec_args=['-cpu-used', '4'],
-        pass2_codec_args=['-cpu-used', '2']
     )
 
     AV1_SVT: Final[VideoFormat] = VideoFormat(
-        'AV1', [Containers.MKV, Containers.MP4], 'libsvtav1', [1],
-        AudioFormats.OPUS, 30,
+        'AV1',
+        'libsvtav1',
+        [Containers.MKV, Containers.MP4],
+        [1],
+        AudioFormats.OPUS,
+        30,
         'video quality, lower is better',
         '-crf',
-        codec_args=[ ],
-        pass1_codec_args=[
-            '-preset', '3'
-        ],
-        pass2_codec_args=[ ]
+        [
+            # All pass args.
+            ['-preset', '3']
+        ]
     )
 
     AV1_AOM: Final[VideoFormat] = VideoFormat(
-        'AV1', [Containers.MKV, Containers.MP4], 'libaom-av1', [1, 2],
-        AudioFormats.OPUS, 30,
+        'AV1',
+        'libaom-av1',
+        [Containers.MKV, Containers.MP4],
+        [1, 2],
+        AudioFormats.OPUS,
+        30,
         'video quality, lower is better',
         '-crf',
-        codec_args=[
-            '-b:v', '0',
-            '-tile-columns', '2',
-            '-row-mt', '1',
-            '-auto-alt-ref', '1',
-            '-lag-in-frames', '25'
+        [
+            # All pass args.
+            [
+                '-b:v', '0',
+                '-tile-columns', '2',
+                '-row-mt', '1',
+                '-auto-alt-ref', '1',
+                '-lag-in-frames', '25'
+            ],
+            # Pass one args.
+            ['-cpu-used', '4'],
+            # Pass two args.
+            ['-cpu-used', '2']
         ],
-        pass1_codec_args=['-cpu-used', '4'],
-        pass2_codec_args=['-cpu-used', '2']
     )
