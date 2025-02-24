@@ -63,9 +63,9 @@ class Containers:
 
 # --------------------------------------------------------------------------------------------------
 @dataclass
-class AudioFormat:
+class Format:
     """
-    Represents the attributes of an audio format.
+    Represents the attributes of an audio or video format.
     """
     name: str
     """
@@ -78,6 +78,13 @@ class AudioFormat:
     containers: list[Container]
     """
     The list of supported container formats when the output is an audio file.
+    """
+
+# --------------------------------------------------------------------------------------------------
+@dataclass
+class AudioFormat(Format):
+    """
+    Represents the attributes of an audio format.
     """
     quality_type: AudioQualityType
     """
@@ -111,21 +118,9 @@ class AudioFormats:
 
 # --------------------------------------------------------------------------------------------------
 @dataclass
-class VideoFormat:
+class VideoFormat(Format):
     """
-    Represents the attriburtes of a video format.
-    """
-    name: str
-    """
-    The name of the video format.
-    """
-    ffmpeg_codec: str
-    """
-    The name of the corresponding ffmpeg codec.
-    """
-    containers: list[Container]
-    """
-    The list of supported container formats.
+    Represents the attributes of a video format.
     """
     passes: list[int]
     """
