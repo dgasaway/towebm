@@ -21,7 +21,7 @@ from argparse import Action, ArgumentError, ArgumentParser, Namespace, _Argument
 from dataclasses import dataclass, field
 from typing import Any, Sequence, TYPE_CHECKING
 if TYPE_CHECKING:
-    from towebm.formats import Container, AudioFormat, VideoFormat
+    from towebm.formats import Container, AudioFormat, VideoFormat, MappedCodecArg
 
 from towebm._version import __version__
 
@@ -229,7 +229,7 @@ class ConverterArgumentParser(ExtraArgumentParser):
         parent.add_argument(
             format.quality_arg.short_flag,
             format.quality_arg.long_flag,
-            help=format.quality_arg.help + f' (default {format.quality_arg.default})',
+            help=f'{format.quality_arg.help} (default {format.quality_arg.default})',
             action=DelimitedValueAction,
             dest='audio_quality',
             metavar=format.quality_arg.metavar,
@@ -506,7 +506,7 @@ class VideoConverterArgumentParser(ConverterArgumentParser):
 
         # Options group
         self.add_basic_arguments()
-        self.add_video_quality_argument()
+        self.add_mapped_codec_args()
         # Note: This may not add an argument if there is only one container chice, but we need to
         # call it anyway.
         self.add_container_argument(video_format.containers)
@@ -538,14 +538,45 @@ class VideoConverterArgumentParser(ConverterArgumentParser):
         self.add_passthrough_argument_group()
 
     # ----------------------------------------------------------------------------------------------
-    def add_video_quality_argument(self, group: _ArgumentGroup | None=None):
+    def add_video_quality_argument(self, group: _ArgumentGroup | None=None) -> None:
+        """
+        Add the --quality argument.
+        """
         parent = self if group is None else group
         s = f'{self.video_format.video_quality_help} (default {self.video_format.default_quality})'
         parent.add_argument('-q', '--quality',
             help=s, action='store', type=int, default=self.video_format.default_quality)
 
     # ----------------------------------------------------------------------------------------------
+    def add_mapped_codec_arg(self, mapped_arg: MappedCodecArg, group: _ArgumentGroup | None=None) -> None:
+        """
+        Add a mapped codec arg.
+        """
+        parent = self if group is None else group
+        parent.add_argument(
+            mapped_arg.short_flag,
+            mapped_arg.long_flag,
+            help=f'{mapped_arg.help} (default {mapped_arg.default})',
+            action='store',
+            type=mapped_arg.value_type,
+            default=mapped_arg.default,
+            dest=mapped_arg.dest
+        )
+
+    # ----------------------------------------------------------------------------------------------
+    def add_mapped_codec_args(self, group: _ArgumentGroup | None=None) -> None:
+        """
+        Add mapped codec args from the video format definition.
+        """
+        parent = self if group is None else group
+        for mapped_arg in self.video_format.mapped_codec_args:
+            self.add_mapped_codec_arg(mapped_arg, parent)
+
+    # ----------------------------------------------------------------------------------------------
     def add_video_filter_arguments(self, group: _ArgumentGroup | None=None):
+        """
+        Add video filter arguments.
+        """
         parent = self if group is None else group
         parent.add_argument('-s', '--standard-filter',
             help='standard video/audio filter; '
@@ -585,7 +616,7 @@ class VideoConverterArgumentParser(ConverterArgumentParser):
     # ----------------------------------------------------------------------------------------------
     def add_multi_pass_arguments(self, passes: list[int], group: _ArgumentGroup | None=None):
         """
-        Add arguments that relate to a two-pass encode.
+        Add arguments that relate to a multi-pass encode.
         """
         parent = self if group is None else group
         parent.add_argument('--pass',

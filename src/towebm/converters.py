@@ -449,6 +449,10 @@ class VideoConverter(Converter):
                 result.extend(codec_args[0])
             if len(codec_args) > pass_num and codec_args[pass_num] is not None:
                 result.extend(codec_args[pass_num])
+        for mapped_arg in self.video_format.mapped_codec_args:
+            result.append(mapped_arg.ffmpeg_arg)
+            result.append(str(getattr(self.args, mapped_arg.dest)))
+
         return result
 
     # --------------------------------------------------------------------------------------------------
@@ -459,7 +463,7 @@ class VideoConverter(Converter):
         """
         result = [
             '-c:v', self.video_format.ffmpeg_codec,
-            self.video_format.video_quality_arg, str(self.args.quality)
+            #self.video_format.video_quality_arg, str(self.args.quality)
         ]
         result += self.get_video_pass_codec_args(pass_num)
         result += self.get_video_filter_args(segment)

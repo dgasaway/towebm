@@ -19,39 +19,50 @@ from typing import Final
 
 # --------------------------------------------------------------------------------------------------
 @dataclass
-class AudioQualityArg:
+class MappedCodecArg:
     """
-    Represents an audio quality argument to add to a Converter CLI.
+    Represents an tool argument that maps directly to an ffmpeg codec arg.
     """
-    short_flag: str
+    short_flag: str | None
     """
     The short option string.
     """
-    long_flag: str
+    long_flag: str | None
     """
     The long option string.
-    """
-    help: str
-    """
-    A brief description of what the argument does.
-    """
-    value_type: type
-    """
-    The type to which the command-line argument should be converted.
-    """
-    metavar: str
-    """
-    A name for the argument in usage messages.
-    """
-    default: any
-    """
-    The default audio quality.
     """
     ffmpeg_arg: str
     """
     The argument to pass to ffmpeg.
     """
-    ffmpeg_value_suffix: str | None
+    dest: str
+    """
+    The name of the attribute to be added to the namespace.
+    """
+    help: str = None
+    """
+    A brief description of what the argument does.
+    """
+    value_type: type = str
+    """
+    The type to which the command-line argument should be converted.
+    """
+    default: any = None
+    """
+    The default value for the argument.
+    """
+    metavar: str | None = None
+    """
+    A name for the argument in usage messages.
+    """
+
+# --------------------------------------------------------------------------------------------------
+@dataclass
+class AudioQualityArg(MappedCodecArg):
+    """
+    Represents an audio quality argument to add to a Converter CLI.
+    """
+    ffmpeg_value_suffix: str | None = None
     """
     The suffix to add to the quality value for the ffmpeg arg, if needed.
     """
@@ -132,21 +143,35 @@ class AudioFormats:
     # vorbis output is not picky about channel layout.
     VORBIS: Final[AudioFormat] = AudioFormat(
         'Vorbis', 'libvorbis', [Containers.OGG],
-        AudioQualityArg('-q', '--quality', 'audio quality', float, 'QUALITY', 6.0, '-q', None),
+        AudioQualityArg('-q', '--quality', '-q',
+            dest='audio_quality',
+            help='audio quality',
+            value_type=float,
+            default=6.0
+        ),
         False
     )
     # ffmpeg will create a multi-track opus file.  VLC will not play it; mplayer will.
     OPUS: Final[AudioFormat] = AudioFormat(
         'Opus', 'libopus', [Containers.OGG],
-        AudioQualityArg(
-            '-b', '--bitrate', 'audio bitrate in kbps', int, 'BITRATE', 160, '-b', 'k'),
+        AudioQualityArg('-b', '--bitrate', '-b',
+            dest='audio_quality',
+            help='audio bitrate in kbps',
+            value_type=int,
+            default=160,
+            ffmpeg_value_suffix='k'
+        ),
         True
     )
     FLAC: Final[AudioFormat] = AudioFormat(
         'FLAC', 'flac', [Containers.FLAC, Containers.OGG],
-        AudioQualityArg(
-            '-c', '--compression-level', 'audio compression level', int, 'COMP_LEVEL', 8,
-            '-compression_level', None),
+        AudioQualityArg('-c', '--compression-level', '-compression-level',
+            dest='audio_quality',
+            help='audio compression level',
+            value_type=int,
+            default=8,
+            metavar='COMP_LEVEL',
+        ),
         False
     )
 
@@ -164,17 +189,9 @@ class VideoFormat(Format):
     """
     The audio format to use for this video format.
     """
-    default_quality: float
+    mapped_codec_args: list[MappedCodecArg]
     """
-    The default video quality.
-    """
-    video_quality_help: str
-    """
-    The help string used by the arg parser for the video quality argument.
-    """
-    video_quality_arg: str
-    """
-    The ffmpeg argument for the video quality argument.
+    THe list of mapped codec args.
     """
     codec_args: list[list[str]]
     """
@@ -193,9 +210,14 @@ class VideoFormats:
         [Containers.WEBM, Containers.MKV, Containers.MP4],
         2,
         AudioFormats.OPUS,
-        30,
-        'video quality, lower is better',
-        '-crf',
+        [
+            MappedCodecArg('-q', '--quality', '-crf',
+                dest='video_quality',
+                help='video quality, lower is better',
+                value_type=int,
+                default=30
+            )
+        ],
         [
             # All pass args.
             [
@@ -211,7 +233,7 @@ class VideoFormats:
             ['-cpu-used', '4'],
             # Pass two args.
             ['-cpu-used', '2']
-        ],
+        ]
     )
 
     AV1_SVT: Final[VideoFormat] = VideoFormat(
@@ -220,13 +242,21 @@ class VideoFormats:
         [Containers.MKV, Containers.MP4],
         1,
         AudioFormats.OPUS,
-        30,
-        'video quality, lower is better',
-        '-crf',
         [
-            # All pass args.
-            ['-preset', '3']
-        ]
+            MappedCodecArg('-q', '--quality', '-crf',
+                dest='video_quality',
+                help='video quality, lower is better',
+                value_type=int,
+                default=30
+            ),
+            MappedCodecArg('-p', '--preset', '-preset',
+                dest='preset',
+                help='AV1-SVT preset; lower improves quality, higher improves speed',
+                value_type=int,
+                default=3
+            )
+        ],
+        [ ]
     )
 
     AV1_AOM: Final[VideoFormat] = VideoFormat(
@@ -235,9 +265,14 @@ class VideoFormats:
         [Containers.MKV, Containers.MP4],
         2,
         AudioFormats.OPUS,
-        30,
-        'video quality, lower is better',
-        '-crf',
+        [
+            MappedCodecArg('-q', '--quality', '-crf',
+                dest='video_quality',
+                help='video quality, lower is better',
+                value_type=int,
+                default=30
+            )
+        ],
         [
             # All pass args.
             [
