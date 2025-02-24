@@ -46,6 +46,7 @@ class Containers:
     FLAC: Final[Container] = Container("FLAC", "flac", ".flac")
     MKV: Final[Container] = Container("Matroska", "matroska", ".mkv")
     WEBM: Final[Container] = Container("WebM", "webm", ".webm")
+    MP4: Final[Container] = Container("MP4", "mp4", ".mp4")
 
 # --------------------------------------------------------------------------------------------------
 @dataclass
@@ -105,7 +106,8 @@ class VideoFormats:
     Contains static `VideoFormat` instances of the defined video formats.
     """
     WEBM: Final[VideoFormat] = VideoFormat(
-        'VP9', [Containers.WEBM, Containers.MKV], 'libvpx-vp9', [1, 2], AudioFormats.OPUS, 30,
+        'VP9', [Containers.WEBM, Containers.MKV, Containers.MP4], 'libvpx-vp9', [1, 2],
+        AudioFormats.OPUS, 30,
         'video quality, lower is better',
         '-crf',
         codec_args=[
@@ -121,11 +123,30 @@ class VideoFormats:
         pass2_codec_args=['-cpu-used', '2']
     )
 
-    AV1: Final[VideoFormat] = VideoFormat(
-        'AV1', [Containers.MKV], 'libsvtav1', [1], AudioFormats.OPUS, 35,
+    AV1_SVT: Final[VideoFormat] = VideoFormat(
+        'AV1', [Containers.MKV, Containers.MP4], 'libsvtav1', [1],
+        AudioFormats.OPUS, 30,
         'video quality, lower is better',
         '-crf',
         codec_args=[ ],
-        pass1_codec_args=[ ],
+        pass1_codec_args=[
+            '-preset', '3'
+        ],
         pass2_codec_args=[ ]
+    )
+
+    AV1_AOM: Final[VideoFormat] = VideoFormat(
+        'AV1', [Containers.MKV, Containers.MP4], 'libaom-av1', [1, 2],
+        AudioFormats.OPUS, 30,
+        'video quality, lower is better',
+        '-crf',
+        codec_args=[
+            '-b:v', '0',
+            '-tile-columns', '2',
+            '-row-mt', '1',
+            '-auto-alt-ref', '1',
+            '-lag-in-frames', '25'
+        ],
+        pass1_codec_args=['-cpu-used', '4'],
+        pass2_codec_args=['-cpu-used', '2']
     )

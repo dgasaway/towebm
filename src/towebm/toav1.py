@@ -19,7 +19,7 @@ from towebm.formats import VideoFormats
 
 # --------------------------------------------------------------------------------------------------
 def main() -> int:
-    return VideoConverter(VideoFormats.AV1).main()
+    return VideoConverter(VideoFormats.AV1_SVT).main()
 
 # --------------------------------------------------------------------------------------------------
 if __name__ == "__main__":
