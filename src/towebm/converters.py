@@ -550,17 +550,17 @@ class VideoConverter(Converter):
         """
         Return the list of commands to transcode the specified segment of the specified input file.
         """
-        if len(self.video_format.passes) == 1:
+        if self.video_format.passes == 1:
             return [self.get_one_pass_command(segment, file_name)]
 
         if 'pass_num' not in self.args or self.args.pass_num is None:
-            passes = sorted(self.video_format.passes)
+            passes = range(1, self.video_format.passes + 1)
         else:
             passes = [ int(self.args.pass_num) ]
 
         commands = []
         for pass_num in passes:
-            if pass_num < max(self.video_format.passes):
+            if pass_num < self.video_format.passes:
                 commands.append(self.get_not_last_pass_command(segment, file_name, pass_num))
             else:
                 commands.append(self.get_last_pass_command(segment, file_name, pass_num))

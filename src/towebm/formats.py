@@ -156,9 +156,9 @@ class VideoFormat(Format):
     """
     Represents the attributes of a video format.
     """
-    passes: list[int]
+    passes: int
     """
-    A list of the passes for this format and codec.
+    The number of encode passes for this format and codec.
     """
     audio_format: AudioFormat
     """
@@ -191,7 +191,7 @@ class VideoFormats:
         'VP9',
         'libvpx-vp9',
         [Containers.WEBM, Containers.MKV, Containers.MP4],
-        [1, 2],
+        2,
         AudioFormats.OPUS,
         30,
         'video quality, lower is better',
@@ -218,7 +218,7 @@ class VideoFormats:
         'AV1',
         'libsvtav1',
         [Containers.MKV, Containers.MP4],
-        [1],
+        1,
         AudioFormats.OPUS,
         30,
         'video quality, lower is better',
@@ -233,7 +233,7 @@ class VideoFormats:
         'AV1',
         'libaom-av1',
         [Containers.MKV, Containers.MP4],
-        [1, 2],
+        2,
         AudioFormats.OPUS,
         30,
         'video quality, lower is better',

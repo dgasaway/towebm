@@ -500,7 +500,7 @@ class VideoConverterArgumentParser(ConverterArgumentParser):
         desc = (
             f'Converts video files to {video_format.name} + '
             f'{video_format.audio_format.name} in a {s} container using a '
-            f'{len(video_format.passes)}-pass ffmpeg encode.'
+            f'{video_format.passes}-pass ffmpeg encode.'
         )
         super().__init__(desc)
 
@@ -516,7 +516,7 @@ class VideoConverterArgumentParser(ConverterArgumentParser):
 
         # Add arguments only needed if more than one pass.  Note: 'pass' is a keyword, so
         # 'pass_num' is used internally.
-        if len(video_format.passes) > 1:
+        if video_format.passes > 1:
             self.add_multi_pass_arguments(video_format.passes)
 
         # Timecode group.
@@ -590,7 +590,7 @@ class VideoConverterArgumentParser(ConverterArgumentParser):
         parent = self if group is None else group
         parent.add_argument('--pass',
             help='run only a given pass',
-            action='store', choices=passes, dest='pass_num')
+            action='store', choices=range(1, passes + 1), dest='pass_num', type=int)
         parent.add_argument('--delete-log',
             help='delete pass 1 log (otherwise keep with timestamp)',
             action='store_true')
