@@ -7,7 +7,10 @@ more.  Arbitrary ffmpeg video and audio filters can also be specified.   Most ou
 multiple audio tracks, e.g., surround sound and stereo.  The included scripts are as follows:
 
 ``towebm``
-    Transcodes video files to VP9_ video and Opus_ audio in a WebM_ container.
+    Transcodes video files to VP9_ video and Opus_ audio in a WebM_ or Matroska_ container.
+
+``toav1``
+    Transcodes video files to AV1_ video and Opus_ audio in a Matroska_ or MP4 container.
 
 ``toopus``
     Transcodes audio or video files to Opus_ audio in an Ogg_ container.
@@ -16,11 +19,15 @@ multiple audio tracks, e.g., surround sound and stereo.  The included scripts ar
     Transcodes audio or video files to Vorbis_ audio in an Ogg_ container.
 
 ``toflac``
-    Transcodes audio or video files to FLAC_ audio in the native container.
+    Transcodes audio or video files to FLAC_ audio in the native or Ogg_ container.
+
+``tomp3``
+    Transcodes audio or video files to VBR MP3_ audio in the native container.
 
 ``ffcat``
     Concatenates multiple files of the same resolution and codec to a single file.  Most usefeul
-    when ``towebm`` has produced multiple output files as edits of a single source file.
+    when ``towebm`` or ``toav1`` have produced multiple output files as edits of a single source
+    file.
 
 Usage
 =====
@@ -175,3 +182,6 @@ example, while in the *src* directory::
 .. _pipx: https://pipx.pypa.io/latest/installation/
 .. _PyPI: https://pypi.python.org/pypi
 .. _Downloads: https://github.com/dgasaway/towebm/releases
+.. _AV1: https://aomedia.org/specifications/av1/
+.. _Matroska: https://www.matroska.org/index.html
+.. _MP3: https://en.wikipedia.org/wiki/MP3
