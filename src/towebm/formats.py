@@ -100,7 +100,7 @@ class Containers:
     MKV: Final[Container] = Container("Matroska", "matroska", ".mkv", True)
     WEBM: Final[Container] = Container("WebM", "webm", ".webm", True)
     MP4: Final[Container] = Container("MP4", "mp4", ".mp4", True)
-    MP3: Final[Container] = Container("MP3", "mp3", ".mp3", True)
+    MP3: Final[Container] = Container("MP3", "mp3", ".mp3", False)
 
 # --------------------------------------------------------------------------------------------------
 @dataclass
