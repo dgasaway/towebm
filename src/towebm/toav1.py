@@ -1,4 +1,4 @@
-# toav1 - Converts videos to av1 format (av1+opus) using ffmpeg.
+# toav1.py - Converts videos to av1 format (av1+opus) using ffmpeg.
 # Copyright (C) 2025 David Gasaway
 # https://github.com/dgasaway/towebm
 

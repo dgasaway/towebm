@@ -1,4 +1,4 @@
-# toflac - Converts audio/video files to audio-only opus using ffmpeg.
+# toflac.py - Converts audio/video files to audio-only FLAC using ffmpeg.
 # Copyright (C) 2025 David Gasaway
 # https://github.com/dgasaway/towebm
 

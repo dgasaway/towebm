@@ -1,4 +1,4 @@
-# towebm - Converts videos to webm format (vp9+opus) using ffmpeg.
+# towebm.py - Converts videos to webm format (vp9+opus) using ffmpeg.
 # Copyright (C) 2025 David Gasaway
 # https://github.com/dgasaway/towebm
 

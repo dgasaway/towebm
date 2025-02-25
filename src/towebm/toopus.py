@@ -1,4 +1,4 @@
-# towebm - Converts audio/video files to audio-only opus using ffmpeg.
+# toopus.py - Converts audio/video files to audio-only opus using ffmpeg.
 # Copyright (C) 2025 David Gasaway
 # https://github.com/dgasaway/towebm
 

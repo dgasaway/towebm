@@ -212,6 +212,17 @@ class Converter(ABC):
         else:
             return [arg, f'0:s:a:{input_index}']
 
+    # --------------------------------------------------------------------------------------------------
+    def get_audio_format_args(self) -> list[str]:
+        """
+        Return a list of the ffmpeg audio codec arguments from the audio format specification.
+        """
+        codec_args = self.audio_format.codec_args
+        if codec_args is not None and len(codec_args) > 0:
+            return codec_args
+        else:
+            return []
+
     # ----------------------------------------------------------------------------------------------
     def is_iterable(self, obj) -> bool:
         """
@@ -334,6 +345,7 @@ class AudioConverter(Converter):
         ]
         result += self.get_audio_filter_args(segment)
         result += self.get_audio_quality_args()
+        result += self.get_audio_format_args()
         result += self.get_audio_metadata_map_args()
         result += self.args.passthrough_args
 
@@ -425,11 +437,12 @@ class VideoConverter(Converter):
     # --------------------------------------------------------------------------------------------------
     def get_audio_codec_args(self, segment: Segment) -> list[str]:
         """
-        Return a list of ffmpeg audio codec and audio filter argumetns for the specified segment.
+        Return a list of ffmpeg audio codec and audio filter arguments for the specified segment.
         """
         if len([q for q in self.args.audio_quality if q is not None and q > 0]) > 0:
             result = ['-c:a', self.video_format.audio_format.ffmpeg_codec]
             result += self.get_audio_filter_args(segment)
+            result += self.get_audio_format_args()
             result += self.get_audio_quality_args()
         else:
             result = ['-an']
@@ -437,7 +450,7 @@ class VideoConverter(Converter):
         return result
 
     # --------------------------------------------------------------------------------------------------
-    def get_video_pass_codec_args(self, pass_num: int) -> list[str]:
+    def get_video_format_args(self, pass_num: int) -> list[str]:
         """
         Return a list of the ffmpeg video codec arguments from the video format specification for the
         specified pass.
@@ -465,7 +478,7 @@ class VideoConverter(Converter):
             '-c:v', self.video_format.ffmpeg_codec,
             #self.video_format.video_quality_arg, str(self.args.quality)
         ]
-        result += self.get_video_pass_codec_args(pass_num)
+        result += self.get_video_format_args(pass_num)
         result += self.get_video_filter_args(segment)
 
         return result

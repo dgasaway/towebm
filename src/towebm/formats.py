@@ -100,6 +100,7 @@ class Containers:
     MKV: Final[Container] = Container("Matroska", "matroska", ".mkv", True)
     WEBM: Final[Container] = Container("WebM", "webm", ".webm", True)
     MP4: Final[Container] = Container("MP4", "mp4", ".mp4", True)
+    MP3: Final[Container] = Container("MP3", "mp3", ".mp3", True)
 
 # --------------------------------------------------------------------------------------------------
 @dataclass
@@ -134,6 +135,11 @@ class AudioFormat(Format):
     """
     True if the format requires mapping 5.1(side) to 5.1(rear) or similar for 5.0/4.1.
     """
+    codec_args: list[str]
+    """
+    The ffmpeg codec arguments to add.  Arguments in index 0 are added for all passes, arguments in
+    index 1 are added to pass 1, and so on.
+    """
 
 # --------------------------------------------------------------------------------------------------
 class AudioFormats:
@@ -149,7 +155,8 @@ class AudioFormats:
             value_type=float,
             default=6.0
         ),
-        False
+        False,
+        [ ]
     )
     # ffmpeg will create a multi-track opus file.  VLC will not play it; mplayer will.
     OPUS: Final[AudioFormat] = AudioFormat(
@@ -161,7 +168,8 @@ class AudioFormats:
             default=160,
             ffmpeg_value_suffix='k'
         ),
-        True
+        True,
+        [ ]
     )
     FLAC: Final[AudioFormat] = AudioFormat(
         'FLAC', 'flac', [Containers.FLAC, Containers.OGG],
@@ -172,7 +180,19 @@ class AudioFormats:
             default=8,
             metavar='COMP_LEVEL',
         ),
-        False
+        False,
+        [ ]
+    )
+    MP3: Final[AudioFormat] = AudioFormat(
+        'MP3', 'libmp3lame', [Containers.MP3],
+        AudioQualityArg('-q', '--quality', '-q',
+            dest='audio_quality',
+            help='audio quality in LAME VBR mode',
+            value_type=float,
+            default=4.0
+        ),
+        False,
+        ['-compression_level', '0']
     )
 
 # --------------------------------------------------------------------------------------------------
@@ -191,7 +211,7 @@ class VideoFormat(Format):
     """
     mapped_codec_args: list[MappedCodecArg]
     """
-    THe list of mapped codec args.
+    The list of mapped codec args.
     """
     codec_args: list[list[str]]
     """
