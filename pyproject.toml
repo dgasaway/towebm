@@ -11,7 +11,7 @@ authors = [
 description = "Python 3 scripts which use ffmpeg to convert videos to webm format (vp9+opus) or to convert audio to opus or vorbis."
 readme = "README.rst"
 requires-python = ">=3.8"
-keywords = ["video", "converter", "ffmpeg", "vp9", "opus", "webm", "vorbis"]
+keywords = ["video", "audio", "converter", "ffmpeg", "vp9", "opus", "webm", "vorbis", "flac", "av1", "mp3"]
 classifiers = [
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
