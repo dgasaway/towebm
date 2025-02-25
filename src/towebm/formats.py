@@ -173,7 +173,7 @@ class AudioFormats:
     )
     FLAC: Final[AudioFormat] = AudioFormat(
         'FLAC', 'flac', [Containers.FLAC, Containers.OGG],
-        AudioQualityArg('-c', '--compression-level', '-compression-level',
+        AudioQualityArg('-c', '--compression-level', '-compression_level',
             dest='audio_quality',
             help='audio compression level',
             value_type=int,
